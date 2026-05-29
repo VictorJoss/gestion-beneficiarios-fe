@@ -1,0 +1,21 @@
+{
+  "name": "diplomado-front",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.35",
+    "vue-router": "^4.6.4",
+    "axios": "^1.16.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21",
+    "typescript": "^5.2.2",
+    "@types/node": "^20.5.1",
+    "@vitejs/plugin-vue": "^4.1.0"
+  }
+}
