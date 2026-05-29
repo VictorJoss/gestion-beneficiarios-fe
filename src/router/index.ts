@@ -1,10 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Login from '../views/Login.vue'
-import Dashboard from '../views/Dashboard.vue'
 
 const routes = [
-  { path: '/', name: 'Login', component: Login },
-  { path: '/dashboard', name: 'Dashboard', component: Dashboard, meta: { requiresAuth: true } }
+  { 
+    path: '/', 
+    name: 'Login', 
+    component: () => import('../views/Login.vue') // 🚀 Lazy loading 
+  },
+  { 
+    path: '/dashboard', 
+    name: 'Dashboard', 
+    component: () => import('../views/Dashboard.vue'), // 🚀 Lazy loading
+    meta: { requiresAuth: true },
+    children: [
+      // Aquí agregaremos las rutas hijas que se cargarán al hacer click en el Sidebar
+    ]
+  }
 ]
 
 const router = createRouter({
