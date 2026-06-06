@@ -1,10 +1,11 @@
 import api from './api'
-import type { 
-  Zona, ZonaCreate, 
+import type {
+  Zona, ZonaCreate,
   Refugio, RefugioCreate,
   Bodega, BodegaCreate,
   Recurso, RecursoCreate,
-  TrasladoCreate, TrasladoResponse
+  TrasladoCreate, TrasladoResponse,
+  Donante, DonanteCreate
 } from '../types'
 
 // Zonas
@@ -90,8 +91,27 @@ export class TrasladoService {
   }
 }
 
+// Donantes
+export class DonanteService {
+  async list(): Promise<Donante[]> {
+    const response = await api.get<Donante[]>('/donantes/')
+    return response.data
+  }
+
+  async get(id: number): Promise<Donante> {
+    const response = await api.get<Donante>(`/donantes/${id}`)
+    return response.data
+  }
+
+  async create(data: DonanteCreate): Promise<Donante> {
+    const response = await api.post<Donante>('/donantes/', data)
+    return response.data
+  }
+}
+
 export const zonaService = new ZonaService()
 export const refugioService = new RefugioService()
 export const bodegaService = new BodegaService()
 export const recursoService = new RecursoService()
 export const trasladoService = new TrasladoService()
+export const donanteService = new DonanteService()
