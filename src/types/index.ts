@@ -20,12 +20,12 @@ export interface Usuario {
   fecha_actualizacion: string
 }
 
-export type UserRole = 
-  | 'ADMIN' 
-  | 'CENSADOR' 
-  | 'OPERADOR_ENTREGAS' 
-  | 'COORDINADOR_LOGISTICA' 
-  | 'FUNCIONARIO_CONTROL' 
+export type UserRole =
+  | 'ADMIN'
+  | 'CENSADOR'
+  | 'OPERADOR_ENTREGAS'
+  | 'COORDINADOR_LOGISTICA'
+  | 'FUNCIONARIO_CONTROL'
   | 'REGISTRADOR_DONACIONES'
 
 // Familia Types
@@ -159,6 +159,19 @@ export interface RecursoCreate {
   umbral_alerta?: number
 }
 
+// Donante Types
+export interface Donante {
+  id_donante: number
+  nombre: string
+  tipo_donante: string
+  fecha_registro?: string
+}
+
+export interface DonanteCreate {
+  nombre: string
+  tipo_donante: string
+}
+
 // Entrega Types
 export type EstadoEntrega = 'PENDIENTE' | 'ENTREGADA' | 'ANULADA'
 
@@ -226,6 +239,19 @@ export interface InventarioConsolidadoLinea {
   cantidad_total: number
 }
 
+export interface InventarioAlertaItem {
+  id_recurso: number
+  nombre: string
+  cantidad_disponible: number
+  umbral_alerta: number
+  bodega?: string
+}
+
+export interface InventarioAlertasResponse {
+  total_alertas: number
+  alertas: InventarioAlertaItem[]
+}
+
 // Foco Sanitario Types
 export type TipoVector = 'AGUA_CONTAMINADA' | 'INSECTOS' | 'ROEDORES' | 'RESIDUOS' | 'OTRO'
 export type EstadoFoco = 'ACTIVO' | 'EN_ATENCION' | 'RESUELTO'
@@ -276,6 +302,19 @@ export interface TrasladoResponse {
   fecha_traslado: string
   origen: RefugioOcupacion
   destino: RefugioOcupacion
+}
+
+// Indicadores Panel
+export interface IndicadoresPanelResponse {
+  total_familias?: number
+  total_personas?: number
+  total_usuarios?: number
+  total_bodegas?: number
+  total_refugios?: number
+  total_recursos?: number
+  entregas_mes?: number
+  familias_alto_riesgo?: number
+  [key: string]: unknown
 }
 
 // API Response Types
