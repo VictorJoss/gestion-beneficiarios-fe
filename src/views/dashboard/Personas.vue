@@ -15,9 +15,12 @@
         <form @submit.prevent="createPerson">
           <div class="form-grid">
             <div class="form-field">
-              <label>ID de familia</label>
-              <input v-model.number="form.id_familia" class="input" type="number" placeholder="Ej. 1" />
-              <span class="helper">ID de la familia a la que pertenece.</span>
+              <label>Familia</label>
+              <select v-model="form.id_familia" class="select">
+                <option :value="null">Seleccionar familia</option>
+                <option v-for="f in familias" :key="f.id_familia" :value="f.id_familia">{{ f.codigo_familia || 'Familia #' + f.id_familia }}</option>
+              </select>
+              <span class="helper">Familia a la que pertenece la persona.</span>
             </div>
             <div class="form-field" :class="{ error: fieldErrors.nombre }">
               <label class="req">Nombre</label>
@@ -51,95 +54,103 @@
               {{ isLoading && mode === 'create' ? 'Creando...' : 'Crear persona' }}
             </button>
             <button type="button" class="btn btn-secondary" @click="reset" :disabled="isLoading">Limpiar</button>
-            <button type="button" class="btn btn-secondary" @click="loadPersonas" :disabled="isLoading">
-              <span v-if="isLoading && mode === 'list'" class="spinner dark"></span>
-              <span v-else class="btn-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.35-4.35" /><circle cx="11" cy="11" r="7" /></svg>
-              </span>
-              {{ isLoading && mode === 'list' ? 'Cargando...' : 'Listar personas' }}
-            </button>
           </div>
         </form>
       </article>
     </div>
 
-    <section v-if="showPanel" class="result-panel">
-      <div class="result-head">
-        <div class="result-head-info">
-          <span class="label">Listado de personas</span>
-          <span v-if="resultKind === 'success' && Array.isArray(personas)" class="count">
-            <strong>{{ personas.length }}</strong> {{ personas.length === 1 ? 'persona' : 'personas' }}
-          </span>
+    <section v-if="showPanel || isListLoading" class="result-panel">
+      <div v-if="isListLoading" class="item-list">
+        <div v-for="n in 4" :key="n" class="skeleton-item">
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line w-60"></div>
+            <div class="skeleton-line w-40"></div>
+            <div class="skeleton-line w-80"></div>
+          </div>
         </div>
-        <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
       </div>
 
-      <div v-if="resultKind === 'success'">
-        <ul v-if="Array.isArray(personas) && personas.length" class="item-list">
-          <li v-for="persona in personas" :key="persona.id_persona" class="item-card">
-            <div class="item-avatar variant-violet">
-              {{ getInitials(persona.nombre) }}
-            </div>
-            <div class="item-content">
-              <h4>{{ persona.nombre }}</h4>
-              <p>
-                <span v-if="persona.edad !== undefined && persona.edad !== null">{{ persona.edad }} años</span>
-                <span v-else>Edad no registrada</span>
-                <span v-if="persona.id_familia"> · Familia #{{ persona.id_familia }}</span>
-              </p>
-              <div class="item-meta">
-                <span v-if="persona.es_cabeza_familia" class="badge badge-primary">Cabeza de familia</span>
-                <span v-if="persona.es_nino" class="badge badge-info">Niño</span>
-                <span v-if="persona.es_anciano" class="badge badge-cyan">Anciano</span>
-                <span v-if="persona.es_embarazada" class="badge badge-pink">Embarazada</span>
-                <span v-if="persona.tiene_discapacidad" class="badge badge-warning">Discapacidad</span>
-                <span v-if="persona.tiene_enfermedad_cronica" class="badge badge-danger">Enfermedad crónica</span>
-                <span v-if="!hasAnyFlag(persona)" class="badge badge-default">Sin características</span>
+      <template v-else>
+        <div class="result-head">
+          <div class="result-head-info">
+            <span class="label">Listado de personas</span>
+            <span v-if="resultKind === 'success' && Array.isArray(personas)" class="count">
+              <strong>{{ personas.length }}</strong> {{ personas.length === 1 ? 'persona' : 'personas' }}
+            </span>
+          </div>
+          <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
+        </div>
+
+        <div v-if="resultKind === 'success'">
+          <ul v-if="Array.isArray(personas) && personas.length" class="item-list">
+            <li v-for="persona in personas" :key="persona.id_persona" class="item-card">
+              <div class="item-avatar variant-violet">
+                {{ getInitials(persona.nombre) }}
               </div>
+              <div class="item-content">
+                <h4>{{ persona.nombre }}</h4>
+                <p>
+                  <span v-if="persona.edad !== undefined && persona.edad !== null">{{ persona.edad }} años</span>
+                  <span v-else>Edad no registrada</span>
+                  <span v-if="persona.id_familia"> &middot; Familia #{{ persona.id_familia }}</span>
+                </p>
+                <div class="item-meta">
+                  <span v-if="persona.es_cabeza_familia" class="badge badge-primary">Cabeza de familia</span>
+                  <span v-if="persona.es_nino" class="badge badge-info">Niño</span>
+                  <span v-if="persona.es_anciano" class="badge badge-cyan">Anciano</span>
+                  <span v-if="persona.es_embarazada" class="badge badge-pink">Embarazada</span>
+                  <span v-if="persona.tiene_discapacidad" class="badge badge-warning">Discapacidad</span>
+                  <span v-if="persona.tiene_enfermedad_cronica" class="badge badge-danger">Enfermedad crónica</span>
+                  <span v-if="!hasAnyFlag(persona)" class="badge badge-default">Sin caracter&iacute;sticas</span>
+                </div>
+              </div>
+              <div class="item-actions">
+                <span class="badge badge-default">ID {{ persona.id_persona }}</span>
+              </div>
+            </li>
+          </ul>
+
+          <div v-else-if="Array.isArray(personas) && personas.length === 0" class="empty-list">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
-            <div class="item-actions">
-              <span class="badge badge-default">ID {{ persona.id_persona }}</span>
+            <h4>Sin personas registradas</h4>
+            <p>Aún no se han creado personas en la plataforma.</p>
+          </div>
+
+          <div v-else class="detail-card">
+            <div class="detail-row">
+              <span class="k">Detalle</span>
+              <span class="v">Persona creada correctamente.</span>
             </div>
-          </li>
-        </ul>
-
-        <div v-else-if="Array.isArray(personas) && personas.length === 0" class="empty-list">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </div>
-          <h4>Sin personas registradas</h4>
-          <p>Aún no se han creado personas en la plataforma.</p>
-        </div>
-
-        <div v-else class="detail-card">
-          <div class="detail-row">
-            <span class="k">Detalle</span>
-            <span class="v">Persona creada correctamente.</span>
           </div>
         </div>
-      </div>
 
-      <div v-else class="toast error">
-        <span class="toast-icon">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-        </span>
-        <div>
-          <strong>No se pudo completar la operación.</strong>
-          <div>{{ errorMessage }}</div>
+        <div v-else class="toast error">
+          <span class="toast-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+          </span>
+          <div>
+            <strong>No se pudo completar la operaci&oacute;n.</strong>
+            <div>{{ errorMessage }}</div>
+          </div>
         </div>
-      </div>
+      </template>
     </section>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, ref } from 'vue'
-import { personaService } from '../../services/familia'
-import type { Persona } from '../../types'
+import { defineComponent, reactive, ref, onMounted } from 'vue'
+import { familiaService, personaService } from '../../services/familia'
+import type { Persona, Familia } from '../../types'
 
 export default defineComponent({
   name: 'DashboardPersonas',
   setup() {
+    const familias = ref<Familia[]>([])
+
     const form = reactive({
       id_familia: null as number | null,
       nombre: '',
@@ -158,7 +169,36 @@ export default defineComponent({
     const showPanel = ref(false)
     const resultKind = ref<'success' | 'error'>('success')
     const personas = ref<Persona[]>([])
+    const isListLoading = ref(false)
     const errorMessage = ref('')
+
+    const extractError = (err: any): string => {
+      const detail = err?.response?.data?.detail
+      if (typeof detail === 'string') return detail
+      if (Array.isArray(detail)) return detail.map((d: any) => d.msg).join(', ')
+      return err?.message || 'Error desconocido'
+    }
+
+    onMounted(async () => {
+      try {
+        familias.value = await familiaService.list()
+      } catch {
+        // silent
+      }
+      isListLoading.value = true
+      try {
+        const response = await personaService.list()
+        personas.value = Array.isArray(response) ? response : []
+        resultKind.value = 'success'
+        showPanel.value = true
+      } catch (err: any) {
+        resultKind.value = 'error'
+        errorMessage.value = extractError(err)
+        showPanel.value = true
+      } finally {
+        isListLoading.value = false
+      }
+    })
 
     const validate = (): boolean => {
       Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
@@ -183,13 +223,6 @@ export default defineComponent({
       showPanel.value = false
       personas.value = []
       errorMessage.value = ''
-    }
-
-    const extractError = (err: any): string => {
-      const detail = err?.response?.data?.detail
-      if (typeof detail === 'string') return detail
-      if (Array.isArray(detail)) return detail.map((d: any) => d.msg).join(', ')
-      return err?.message || 'Error desconocido'
     }
 
     const getInitials = (name: string) => {
@@ -251,7 +284,7 @@ export default defineComponent({
 
     return {
       form, fieldErrors, isLoading, mode, showPanel, resultKind,
-      personas, errorMessage,
+      personas, familias, isListLoading, errorMessage,
       createPerson, loadPersonas, reset, closeResult,
       getInitials, hasAnyFlag
     }
