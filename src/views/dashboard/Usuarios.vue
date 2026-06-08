@@ -110,6 +110,10 @@
                   {{ user.activo ? 'Activo' : 'Inactivo' }}
                 </span>
               </div>
+              <div class="item-dates">
+                <span v-if="user.fecha_creacion" class="date-line">Creado: {{ formatDateTime(user.fecha_creacion) }}</span>
+                <span v-if="user.fecha_actualizacion" class="date-line">Actualizado: {{ formatDateTime(user.fecha_actualizacion) }}</span>
+              </div>
             </div>
             <div class="item-actions">
               <span class="badge badge-default">ID {{ user.id_usuario }}</span>
@@ -283,12 +287,35 @@ export default defineComponent({
       return map[rol] || 'badge-default'
     }
 
+    const formatDateTime = (iso?: string) => {
+      if (!iso) return '—'
+      try {
+        const d = new Date(iso)
+        return d.toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      } catch {
+        return iso
+      }
+    }
+
     return {
       form, fieldErrors, isLoading, mode, showPanel, resultKind,
       usuarios, errorMessage,
       createUser, loadUsers, resetForm, closeResult,
-      getInitials, avatarVariant, roleBadgeClass, puedeAccion
+      getInitials, avatarVariant, roleBadgeClass, formatDateTime, puedeAccion
     }
   }
 })
 </script>
+
+<style scoped>
+.item-dates {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+.date-line {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary, #94a3b8);
+}
+</style>
