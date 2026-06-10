@@ -45,14 +45,23 @@
     </div>
 
     <section v-if="showPanel || isListLoading" class="result-panel">
-      <LoadingState v-if="isListLoading" variant="skeleton" :count="4" label="Cargando familias..." />
+      <div v-if="isListLoading" class="item-list">
+        <div v-for="n in 4" :key="n" class="skeleton-item">
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line w-60"></div>
+            <div class="skeleton-line w-40"></div>
+            <div class="skeleton-line w-80"></div>
+          </div>
+        </div>
+      </div>
 
       <template v-else>
         <div class="result-head">
           <div class="result-head-info">
             <span class="label">Listado de familias</span>
             <span v-if="resultKind === 'success' && Array.isArray(familias)" class="count">
-              <strong>{{ familias.length }}</strong> {{ familias.length === 1 ? 'familia' : 'familias' }}
+              <strong>{{ totalItems }}</strong> {{ totalItems === 1 ? 'familia' : 'familias' }}
             </span>
           </div>
           <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
@@ -83,25 +92,41 @@
             </li>
           </ul>
 
-          <EmptyState
-            v-else-if="Array.isArray(familias) && familias.length === 0"
-            title="Sin familias registradas"
-            message="Aún no se han creado familias en la plataforma."
-          />
+          <div v-if="Array.isArray(familias) && familias.length === 0" class="empty-list">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <h4>Sin familias registradas</h4>
+            <p>Aún no se han creado familias en la plataforma.</p>
+          </div>
 
-          <div v-else class="detail-card">
+          <div v-if="resultKind === 'success' && !Array.isArray(familias)" class="detail-card">
             <div class="detail-row">
               <span class="k">Detalle</span>
               <span class="v">Familia creada correctamente.</span>
             </div>
           </div>
+
+          <Pagination
+            v-if="Array.isArray(familias) && familias.length > 0"
+            v-model:currentPage="currentPage"
+            v-model:pageSize="pageSize"
+            :total="totalItems"
+            :loading="isListLoading"
+            item-label="familia"
+            @change="onPageChange"
+          />
         </div>
 
-        <ErrorState
-          v-else
-          title="No se pudo completar la operación."
-          :message="errorMessage"
-        />
+        <div v-else class="toast error">
+          <span class="toast-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+          </span>
+          <div>
+            <strong>No se pudo completar la operaci&oacute;n.</strong>
+            <div>{{ errorMessage }}</div>
+          </div>
+        </div>
       </template>
     </section>
   </div>
@@ -112,14 +137,12 @@ import { defineComponent, reactive, ref, onMounted } from 'vue'
 import { familiaService } from '../../services/familia'
 import { zonaService } from '../../services/ubicaciones'
 import { usePermissions } from '../../composables/usePermissions'
-import type { Familia, Zona } from '../../types'
-import LoadingState from '../../components/LoadingState.vue'
-import EmptyState from '../../components/EmptyState.vue'
-import ErrorState from '../../components/ErrorState.vue'
+import Pagination from '../../components/Pagination.vue'
+import type { Familia, Zona, PaginatedResponse } from '../../types'
 
 export default defineComponent({
   name: 'DashboardFamilias',
-  components: { LoadingState, EmptyState, ErrorState },
+  components: { Pagination },
   setup() {
     const { puedeAccion } = usePermissions()
     const form = reactive({ acepta_privacidad: true, id_zona: null as number | null })
@@ -133,6 +156,35 @@ export default defineComponent({
     const isListLoading = ref(false)
     const errorMessage = ref('')
 
+    const currentPage = ref(1)
+    const pageSize = ref(6)
+    const totalItems = ref(0)
+
+    const loadFamilies = async (page: number = currentPage.value, size: number = pageSize.value) => {
+      isListLoading.value = true
+      mode.value = 'list'
+      showPanel.value = true
+      try {
+        const response: PaginatedResponse<Familia> = await familiaService.list(page, size)
+        resultKind.value = 'success'
+        familias.value = response.items
+        totalItems.value = response.total
+        currentPage.value = response.page
+        pageSize.value = response.page_size
+      } catch (err: any) {
+        resultKind.value = 'error'
+        errorMessage.value = extractError(err)
+        familias.value = []
+      } finally {
+        isListLoading.value = false
+        mode.value = null
+      }
+    }
+
+    const onPageChange = (payload: { page: number; pageSize: number }) => {
+      loadFamilies(payload.page, payload.pageSize)
+    }
+
     onMounted(async () => {
       try {
         zonas.value = await zonaService.list()
@@ -140,19 +192,7 @@ export default defineComponent({
         // silent
       }
       if (puedeAccion('familias.listar')) {
-        isListLoading.value = true
-        try {
-          const response = await familiaService.list()
-          familias.value = Array.isArray(response) ? response : []
-          resultKind.value = 'success'
-          showPanel.value = true
-        } catch (err: any) {
-          resultKind.value = 'error'
-          errorMessage.value = extractError(err)
-          showPanel.value = true
-        } finally {
-          isListLoading.value = false
-        }
+        await loadFamilies()
       }
     })
 
@@ -196,36 +236,16 @@ export default defineComponent({
       isLoading.value = true
       mode.value = 'create'
       try {
-        const response: Familia = await familiaService.create({
+        await familiaService.create({
           acepta_privacidad: form.acepta_privacidad,
           id_zona: form.id_zona ?? undefined
         })
         resultKind.value = 'success'
-        familias.value = [response]
-        showPanel.value = true
         resetForm()
+        await loadFamilies(1, pageSize.value)
       } catch (err: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(err)
-        showPanel.value = true
-      } finally {
-        isLoading.value = false
-        mode.value = null
-      }
-    }
-
-    const loadFamilies = async () => {
-      isLoading.value = true
-      mode.value = 'list'
-      try {
-        const response: Familia[] = await familiaService.list()
-        resultKind.value = 'success'
-        familias.value = Array.isArray(response) ? response : []
-        showPanel.value = true
-      } catch (err: any) {
-        resultKind.value = 'error'
-        errorMessage.value = extractError(err)
-        familias.value = []
         showPanel.value = true
       } finally {
         isLoading.value = false
@@ -236,7 +256,8 @@ export default defineComponent({
     return {
       form, fieldErrors, isLoading, mode, showPanel, resultKind,
       familias, zonas, isListLoading, errorMessage,
-      createFamily, loadFamilies, resetForm, closeResult,
+      currentPage, pageSize, totalItems,
+      createFamily, loadFamilies, onPageChange, resetForm, closeResult,
       formatDate, puedeAccion
     }
   }
