@@ -57,7 +57,9 @@
         <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
       </div>
 
-      <LoadingState v-if="isListLoading" variant="skeleton" :count="4" label="Cargando donantes..." />
+      <div v-if="isListLoading" class="item-list">
+        <div v-for="n in 4" :key="n" class="skeleton-item"><div class="skeleton-avatar"></div><div class="skeleton-body"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div></div>
+      </div>
 
       <div v-else-if="isCreatedResult && createdDonante" class="item-list">
         <div class="item-card">
@@ -88,17 +90,20 @@
         </div>
       </div>
 
-      <EmptyState
-        v-else
-        title="Sin donantes registrados"
-        message="Aún no se han creado donantes en la plataforma."
-      />
+      <div v-else class="empty-list">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
+        <h4>Sin donantes registrados</h4>
+        <p>A&uacute;n no se han creado donantes en la plataforma.</p>
+      </div>
 
-      <ErrorState
-        v-if="resultKind === 'error'"
-        title="No se pudo completar la operación."
-        :message="errorMessage"
-      />
+      <div v-if="resultKind === 'error'" class="toast error">
+        <span class="toast-icon">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+        </span>
+        <div><strong>No se pudo completar la operaci&oacute;n.</strong><div>{{ errorMessage }}</div></div>
+      </div>
     </section>
   </div>
 </template>
@@ -108,13 +113,9 @@ import { defineComponent, reactive, ref, onMounted } from 'vue'
 import { donanteService } from '../../services/ubicaciones'
 import { usePermissions } from '../../composables/usePermissions'
 import type { Donante } from '../../types'
-import LoadingState from '../../components/LoadingState.vue'
-import EmptyState from '../../components/EmptyState.vue'
-import ErrorState from '../../components/ErrorState.vue'
 
 export default defineComponent({
   name: 'DashboardDonantes',
-  components: { LoadingState, EmptyState, ErrorState },
   setup() {
     const { puedeAccion } = usePermissions()
     const form = reactive({ nombre: '', tipo_donante: '' })

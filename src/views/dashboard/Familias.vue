@@ -45,7 +45,16 @@
     </div>
 
     <section v-if="showPanel || isListLoading" class="result-panel">
-      <LoadingState v-if="isListLoading" variant="skeleton" :count="4" label="Cargando familias..." />
+      <div v-if="isListLoading" class="item-list">
+        <div v-for="n in 4" :key="n" class="skeleton-item">
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line w-60"></div>
+            <div class="skeleton-line w-40"></div>
+            <div class="skeleton-line w-80"></div>
+          </div>
+        </div>
+      </div>
 
       <template v-else>
         <div class="result-head">
@@ -77,50 +86,19 @@
                   <span v-if="familia.id_zona" class="badge badge-default">Zona #{{ familia.id_zona }}</span>
                 </div>
               </div>
-
               <div class="item-actions">
-                <button class="btn btn-secondary" type="button" @click="toggleDetalleFamilia(familia.id_familia)">
-                  {{ familiaExpandida === familia.id_familia ? 'Ocultar detalle' : 'Ver detalle' }}
-                </button>
-
-                <button 
-                  class="btn btn-primary" 
-                  type="button" 
-                  :disabled="calculandoPuntaje === familia.id_familia"
-                  @click="calcularPuntajeFamilia(familia.id_familia)">
-                  {{ calculandoPuntaje === familia.id_familia ? 'Calculando...' : 'Calcular puntaje' }}
-                </button>
-
-                 <span class="badge badge-default">ID {{ familia.id_familia }}</span>
+                <span class="badge badge-default">ID {{ familia.id_familia }}</span>
               </div>
-
-                <div v-if="familiaExpandida === familia.id_familia" class="family-detail-card">
-                <div class="detail-row">
-                  <span class="k">Código</span>
-                  <span class="v">{{ familia.codigo_familia || 'Sin código' }}</span>
-                </div>
-                 <div class="detail-row">
-                  <span class="k">Fecha de registro</span>
-                  <span class="v">{{ formatDate(familia.fecha_registro) }}</span>
-                </div>
-                 <div class="detail-row">
-                  <span class="k">Zona</span>
-                  <span class="v">{{ familia.id_zona ? 'Zona #' + familia.id_zona : 'Sin zona asignada' }}</span>
-                </div>
-                 <div class="detail-row">
-                  <span class="k">Puntaje prioridad</span>
-                  <span class="v">{{ familia.puntaje_prioridad ?? 'Pendiente por calcular' }}</span>
-                </div>
-              </div>
-              
             </li>
           </ul>
 
-          <EmptyState
-            v-else-if="Array.isArray(familias) && familias.length === 0"
-            title="Sin familias registradas"
-            message="Aún no se han creado familias en la plataforma."
-          />
+          <div v-else-if="Array.isArray(familias) && familias.length === 0" class="empty-list">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <h4>Sin familias registradas</h4>
+            <p>Aún no se han creado familias en la plataforma.</p>
+          </div>
 
           <div v-else class="detail-card">
             <div class="detail-row">
@@ -130,11 +108,15 @@
           </div>
         </div>
 
-        <ErrorState
-          v-else
-          title="No se pudo completar la operación."
-          :message="errorMessage"
-        />
+        <div v-else class="toast error">
+          <span class="toast-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+          </span>
+          <div>
+            <strong>No se pudo completar la operaci&oacute;n.</strong>
+            <div>{{ errorMessage }}</div>
+          </div>
+        </div>
       </template>
     </section>
   </div>
@@ -146,13 +128,9 @@ import { familiaService } from '../../services/familia'
 import { zonaService } from '../../services/ubicaciones'
 import { usePermissions } from '../../composables/usePermissions'
 import type { Familia, Zona } from '../../types'
-import LoadingState from '../../components/LoadingState.vue'
-import EmptyState from '../../components/EmptyState.vue'
-import ErrorState from '../../components/ErrorState.vue'
 
 export default defineComponent({
   name: 'DashboardFamilias',
-  components: { LoadingState, EmptyState, ErrorState },
   setup() {
     const { puedeAccion } = usePermissions()
     const form = reactive({ acepta_privacidad: true, id_zona: null as number | null })
@@ -165,8 +143,6 @@ export default defineComponent({
     const zonas = ref<Zona[]>([])
     const isListLoading = ref(false)
     const errorMessage = ref('')
-    const familiaExpandida = ref<number | null>(null)
-    const calculandoPuntaje = ref<number | null>(null)
 
     onMounted(async () => {
       try {
@@ -268,99 +244,12 @@ export default defineComponent({
       }
     }
 
-    const toggleDetalleFamilia = (familiaId: number) => {
-  familiaExpandida.value = familiaExpandida.value === familiaId ? null : familiaId
-}
-
-const calcularPuntajeFamilia = async (familiaId: number) => {
-  calculandoPuntaje.value = familiaId
-  try {
-    const response = await familiaService.calcularPuntaje(familiaId)
-
-    familias.value = familias.value.map(familia =>
-      familia.id_familia === familiaId
-        ? {
-            ...familia,
-            puntaje_prioridad: response.puntaje_prioridad ?? response.puntaje ?? familia.puntaje_prioridad
-          }
-        : familia
-    )
-  } catch (err: any) {
-    resultKind.value = 'error'
-    errorMessage.value = extractError(err)
-    showPanel.value = true
-  } finally {
-    calculandoPuntaje.value = null
-  }
-}
-
     return {
       form, fieldErrors, isLoading, mode, showPanel, resultKind,
       familias, zonas, isListLoading, errorMessage,
-      familiaExpandida, calculandoPuntaje,
       createFamily, loadFamilies, resetForm, closeResult,
-      toggleDetalleFamilia, calcularPuntajeFamilia,
       formatDate, puedeAccion
     }
   }
 })
 </script>
-
-<style scoped>
-.item-card {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-}
-
-.item-content {
-  flex: 1;
-  min-width: 180px;
-}
-
-.item-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.family-detail-card {
-  width: 100%;
-  margin-top: 12px;
-  padding: 14px 16px;
-  border: 1px solid #dbe7ff;
-  border-radius: 14px;
-  background: #f8fbff;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-}
-
-.family-detail-card .detail-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.family-detail-card .k {
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-}
-
-.family-detail-card .v {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-@media (max-width: 640px) {
-  .item-actions {
-    justify-content: center;
-  }
-}
-</style>
