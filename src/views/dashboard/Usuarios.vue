@@ -46,7 +46,7 @@
 
           <div class="form-actions">
             <button type="submit" class="btn btn-primary" :disabled="isLoading">
-              <span v-if="isLoading" class="spinner"></span>
+              <span v-if="isLoading && (mode === 'create' || mode === 'edit')" class="spinner"></span>
               <span v-else class="btn-icon">
                 <svg v-if="!isEditing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6" /><path d="M22 11h-6" /></svg>
                 <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
@@ -89,83 +89,87 @@
       <div class="result-head">
         <div class="result-head-info">
           <span class="label">Listado de usuarios</span>
-          <span v-if="resultKind === 'success' && Array.isArray(usuarios)" class="count">
+          <span v-if="resultKind === 'success' && !isLoading && Array.isArray(usuarios)" class="count">
             <strong>{{ usuarios.length }}</strong> {{ usuarios.length === 1 ? 'registro' : 'registros' }}
           </span>
         </div>
         <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
       </div>
 
-      <div v-if="resultKind === 'success'">
-        <ul v-if="Array.isArray(usuarios) && usuarios.length" class="item-list">
-          <li v-for="user in usuarios" :key="user.id_usuario" class="item-card">
-            <div class="item-avatar" :class="avatarVariant(user.rol)">
-              {{ getInitials(user.nombre_completo) }}
-            </div>
-            <div class="item-content">
-              <h4>{{ user.nombre_completo }}</h4>
-              <p>{{ user.correo }}</p>
-              <div class="item-meta">
-                <span class="badge" :class="roleBadgeClass(user.rol)">{{ user.rol }}</span>
-                <span class="status">
-                  <span class="dot" :class="user.activo ? 'on' : 'off'"></span>
-                  {{ user.activo ? 'Activo' : 'Inactivo' }}
-                </span>
-              </div>
-              <div class="item-dates">
-                <span v-if="user.fecha_creacion" class="date-line">Creado: {{ formatDateTime(user.fecha_creacion) }}</span>
-                <span v-if="user.fecha_actualizacion" class="date-line">Actualizado: {{ formatDateTime(user.fecha_actualizacion) }}</span>
-              </div>
-            </div>
-            <div class="item-actions">
-              <span class="badge badge-default">ID {{ user.id_usuario }}</span>
-              <div v-if="puedeAccion('usuarios.actualizar')" class="actions-group">
-                <button class="btn btn-ghost btn-icon" @click="editUser(user)" title="Editar usuario">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                </button>
-                <button v-if="user.activo" class="btn btn-ghost btn-icon text-danger" @click="promptToggleStatus(user)" title="Desactivar usuario">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
-                </button>
-                <button v-else class="btn btn-ghost btn-icon text-success" @click="promptToggleStatus(user)" title="Activar usuario">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
+      <LoadingState
+        v-if="isLoading && mode === 'list'"
+        variant="skeleton"
+        :count="4"
+        label="Cargando usuarios..."
+      />
 
-        <div v-else-if="Array.isArray(usuarios) && usuarios.length === 0" class="empty-list">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+      <template v-else>
+        <div v-if="resultKind === 'success'">
+          <ul v-if="Array.isArray(usuarios) && usuarios.length" class="item-list">
+            <li v-for="user in usuarios" :key="user.id_usuario" class="item-card">
+              <div class="item-avatar" :class="avatarVariant(user.rol)">
+                {{ getInitials(user.nombre_completo) }}
+              </div>
+              <div class="item-content">
+                <h4>{{ user.nombre_completo }}</h4>
+                <p>{{ user.correo }}</p>
+                <div class="item-meta">
+                  <span class="badge" :class="roleBadgeClass(user.rol)">{{ user.rol }}</span>
+                  <span class="status">
+                    <span class="dot" :class="user.activo ? 'on' : 'off'"></span>
+                    {{ user.activo ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </div>
+                <div class="item-dates">
+                  <span v-if="user.fecha_creacion" class="date-line">Creado: {{ formatDateTime(user.fecha_creacion) }}</span>
+                  <span v-if="user.fecha_actualizacion" class="date-line">Actualizado: {{ formatDateTime(user.fecha_actualizacion) }}</span>
+                </div>
+              </div>
+              <div class="item-actions">
+                <span class="badge badge-default">ID {{ user.id_usuario }}</span>
+                <div v-if="puedeAccion('usuarios.actualizar')" class="actions-group">
+                  <button class="btn btn-ghost btn-icon" @click="editUser(user)" title="Editar usuario">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button v-if="user.activo" class="btn btn-ghost btn-icon text-danger" @click="promptToggleStatus(user)" title="Desactivar usuario">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                  </button>
+                  <button v-else class="btn btn-ghost btn-icon text-success" @click="promptToggleStatus(user)" title="Activar usuario">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+
+          <EmptyState
+            v-else-if="Array.isArray(usuarios) && usuarios.length === 0"
+            title="Sin usuarios registrados"
+            message="Aún no se han creado usuarios en la plataforma."
+          />
+
+          <div v-else class="detail-card">
+            <div class="detail-row">
+              <span class="k">Detalle</span>
+              <span class="v">Usuario creado correctamente.</span>
+            </div>
           </div>
-          <h4>Sin usuarios registrados</h4>
-          <p>Aún no se han creado usuarios en la plataforma.</p>
         </div>
 
-        <div v-else class="detail-card">
-          <div class="detail-row">
-            <span class="k">Detalle</span>
-            <span class="v">Usuario creado correctamente.</span>
-          </div>
-        </div>
-      </div>
+        <ErrorState
+          v-else
+          title="No se pudo completar la operación."
+          :message="errorMessage"
+          retry-label="Reintentar"
+          @retry="loadUsers"
+        />
+      </template>
 
-      <div v-else class="toast error">
-        <span class="toast-icon">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-        </span>
-        <div>
-          <strong>No se pudo completar la operación.</strong>
-          <div>{{ errorMessage }}</div>
-        </div>
-      </div>
-
-      <!-- Componente para confirmación de cambio de estado -->
       <ConfirmDialog
         v-model:show="showStateConfirm"
         :title="userToToggle?.activo ? 'Desactivar Usuario' : 'Activar Usuario'"
-        :message="userToToggle?.activo 
-          ? `¿Estás seguro de que deseas desactivar el usuario '${userToToggle?.nombre_completo}'?` 
+        :message="userToToggle?.activo
+          ? `¿Estás seguro de que deseas desactivar el usuario '${userToToggle?.nombre_completo}'?`
           : `¿Estás seguro de que deseas activar el usuario '${userToToggle?.nombre_completo}'?`"
         :type="userToToggle?.activo ? 'danger' : 'primary'"
         :confirmText="userToToggle?.activo ? 'Sí, desactivar' : 'Sí, activar'"
@@ -182,10 +186,13 @@ import { userService } from '../../services/users'
 import { usePermissions } from '../../composables/usePermissions'
 import type { Usuario, UserRole } from '../../types'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import LoadingState from '../../components/LoadingState.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import ErrorState from '../../components/ErrorState.vue'
 
 export default defineComponent({
   name: 'DashboardUsuarios',
-  components: { ConfirmDialog },
+  components: { ConfirmDialog, LoadingState, EmptyState, ErrorState },
   setup() {
     const { puedeAccion } = usePermissions()
 
@@ -369,16 +376,15 @@ export default defineComponent({
     const loadUsers = async () => {
       isLoading.value = true
       mode.value = 'list'
+      showPanel.value = true
       try {
         const response: Usuario[] = await userService.list()
         resultKind.value = 'success'
         usuarios.value = Array.isArray(response) ? response : []
-        showPanel.value = true
       } catch (err: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(err)
         usuarios.value = []
-        showPanel.value = true
       } finally {
         isLoading.value = false
         mode.value = null
