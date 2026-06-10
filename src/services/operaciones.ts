@@ -9,9 +9,9 @@ import type {
 
 // Entregas
 export class EntregaService {
-  async registrar(data: EntregaCreate): Promise<Entrega> {
-    const response = await api.post<Entrega>('/entregas/', data)
-    return response.data
+  async listar(params?: { estado?: string; id_familia?: number; skip?: number; limit?: number }): Promise<Entrega[]> {
+  const response = await api.get<Entrega[]>('/entregas/', { params })
+  return response.data
   }
 
   async get(id: number): Promise<Entrega> {
