@@ -34,6 +34,7 @@
         >
           <span class="nav-icon" v-html="item.icon" />
           <span class="nav-text">{{ item.label }}</span>
+          <span v-if="item.key === 'recursos' && alertCount > 0" class="nav-badge">{{ alertCount > 99 ? '99+' : alertCount }}</span>
         </router-link>
       </nav>
 
@@ -62,10 +63,11 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent } from 'vue'
+import { computed, defineComponent, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authService } from '../services/auth'
 import { usePermissions } from '../composables/usePermissions'
+import { inventarioService } from '../services/operaciones'
 
 export default defineComponent({
   name: 'Sidebar',
@@ -76,7 +78,31 @@ export default defineComponent({
   setup(_, { emit }) {
     const router = useRouter()
     const usuario = authService.getUser()
-    const { modulos, rolLabel } = usePermissions()
+    const { modulos, rolLabel, puedeAccion } = usePermissions()
+
+    const alertCount = ref(0)
+    let alertInterval: ReturnType<typeof setInterval> | null = null
+
+    const fetchAlerts = async () => {
+      // Solo consultar si tiene permiso de inventario (el usuario que ve Recursos)
+      if (!puedeAccion('recursos.inventario')) return
+      try {
+        const response = await inventarioService.obtenerAlertas()
+        alertCount.value = response.total_alertas || 0
+      } catch (e) {
+        // silent
+      }
+    }
+
+    onMounted(() => {
+      fetchAlerts()
+      // auto update every 60 seconds
+      alertInterval = setInterval(fetchAlerts, 60000)
+    })
+
+    onUnmounted(() => {
+      if (alertInterval) clearInterval(alertInterval)
+    })
 
     const initials = computed(() => {
       const name = usuario?.nombre_completo || ''
@@ -92,7 +118,7 @@ export default defineComponent({
       router.push({ path: '/' })
     }
 
-    return { usuario, initials, modulos, rolLabel, onLogout }
+    return { usuario, initials, modulos, rolLabel, onLogout, alertCount }
   }
 })
 </script>
@@ -346,5 +372,17 @@ export default defineComponent({
   .sidebar-overlay {
     display: block;
   }
+}
+
+.nav-badge {
+  background: #f04438;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+  min-width: 20px;
+  text-align: center;
 }
 </style>
