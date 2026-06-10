@@ -58,6 +58,8 @@ const routes = [
         path: 'entregas',
         name: 'DashboardEntregas',
         component: () => import('../views/dashboard/Entregas.vue')
+        },
+        {
         path: 'reportes',
         name: 'DashboardReportes',
         component: () => import('../views/dashboard/Reportes.vue')
