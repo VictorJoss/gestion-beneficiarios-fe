@@ -65,7 +65,49 @@
           <div class="form-actions"><button type="submit" class="btn btn-primary" :disabled="loading.alerts" style="background-color: var(--color-danger); border-color: var(--color-danger)">{{ loading.alerts ? 'Consultando...' : 'Ver alertas' }}</button></div>
         </form>
       </article>
-    </div>
+    
+      <article class="form-card">
+        <div class="form-card-head">
+          <div class="form-card-title">
+            <h3>Configurar umbrales</h3>
+            <span>Editar umbrales de alerta de recursos existentes</span>
+          </div>
+        </div>
+
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th>Recurso</th>
+              <th>Categoría</th>
+              <th>Umbral</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="recurso in recursos" :key="recurso.id_recurso">
+              <td>{{ recurso.nombre }}</td>
+              <td>
+                <span class="badge badge-sm" :class="categoriaBadge(recurso.categoria)">
+                  {{ recurso.categoria }}
+                </span>
+              </td>
+              <td>
+                <input
+                  v-model.number="recurso.umbral_alerta"
+                  type="number"
+                  class="input"
+                  style="max-width:120px"
+                  @blur="actualizarUmbral(recurso)"
+                />
+                <small v-if="savingUmbral === recurso.id_recurso">
+                  Guardando...
+                </small>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+
+</div>
 
     <section v-if="showPanel" class="result-panel">
       <div class="result-head">
@@ -197,6 +239,7 @@ export default defineComponent({
     onMounted(async () => {
       try {
         bodegas.value = await bodegaService.list()
+        recursos.value = await recursoService.list()
       } catch {
         // silent
       }
@@ -207,6 +250,8 @@ export default defineComponent({
     const createdResource = ref<Recurso | null>(null)
     const inventoryData = ref<InventarioConsultaResponse | null>(null)
     const alertsData = ref<InventarioAlertasResponse | null>(null)
+    const recursos = ref<Recurso[]>([])
+    const savingUmbral = ref<number | null>(null)
     const errorMessage = ref('')
 
     const panelTitle = computed(() => {
@@ -319,11 +364,35 @@ export default defineComponent({
       }
     }
 
+
+    const actualizarUmbral = async (recurso: Recurso) => {
+      try {
+        savingUmbral.value = recurso.id_recurso
+
+        const actualizado = await recursoService.updateUmbralAlerta(
+          recurso.id_recurso,
+          recurso.umbral_alerta ?? null
+        )
+
+        const index = recursos.value.findIndex(
+          r => r.id_recurso === recurso.id_recurso
+        )
+
+        if (index !== -1) {
+          recursos.value[index] = actualizado
+        }
+      } catch (e: any) {
+        alert(extractError(e))
+      } finally {
+        savingUmbral.value = null
+      }
+    }
+
     return {
-      resource, bodegas, warehouseId, warehouseIdAlerts, loading, showPanel, resultKind, mode,
+      resource, bodegas, recursos, savingUmbral, warehouseId, warehouseIdAlerts, loading, showPanel, resultKind, mode,
       createdResource, inventoryData, alertsData, errorMessage,
       panelTitle, closeResult, categoriaBadge,
-      createResource, loadInventory, loadAlerts, onRetry, puedeAccion
+      createResource, loadInventory, loadAlerts, actualizarUmbral, onRetry, puedeAccion
     }
   }
 })
