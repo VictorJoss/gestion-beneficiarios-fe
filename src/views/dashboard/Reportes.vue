@@ -1,6 +1,6 @@
 <template>
   <div class="dash-page">
-    <section class="result-panel" style="display: block;">
+    <section v-if="puedeAccion('reportes.ver')" class="result-panel" style="display: block;">
       <div class="result-head">
         <div class="result-head-info">
           <span class="label">Reportes del Sistema</span>
@@ -62,16 +62,26 @@
         </div>
       </div>
     </section>
+    <section v-else class="result-panel" style="display: block;">
+      <div class="toast error">
+        <div>
+          <strong>Acceso denegado</strong>
+          <div>No tienes permisos para ver este módulo.</div>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref, onMounted } from 'vue'
 import { reportesService } from '../../services/operaciones'
+import { usePermissions } from '../../composables/usePermissions'
 
 export default defineComponent({
   name: 'DashboardReportes',
   setup() {
+    const { puedeAccion } = usePermissions()
     const zonas = ref<any[]>([])
     const loading = ref(false)
     const error = ref('')
@@ -105,12 +115,17 @@ export default defineComponent({
     const exportarCSV = () => {
       if (!zonas.value.length) return
 
+      const escapeCsvValue = (value: unknown): string => {
+        const text = String(value ?? '')
+        return `"${text.replace(/"/g, '""')}"`
+      }
+
       const header = ['ID Zona', 'Nombre', 'Nivel de Riesgo', 'Familias por Zona']
       const rows = zonas.value.map(z => [
-        z.id_zona,
-        `"${z.nombre}"`,
-        z.nivel_riesgo,
-        z.familias_por_zona
+        escapeCsvValue(z.id_zona),
+        escapeCsvValue(z.nombre),
+        escapeCsvValue(z.nivel_riesgo),
+        escapeCsvValue(z.familias_por_zona)
       ])
 
       const csvContent = [header.join(','), ...rows.map(r => r.join(','))].join('\n')
@@ -122,11 +137,15 @@ export default defineComponent({
       link.setAttribute('download', `reporte_zonas_sin_entregas_${new Date().toISOString().split('T')[0]}.csv`)
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      try {
+        link.click()
+      } finally {
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }
     }
 
-    return { zonas, loading, error, riskBadge, exportarCSV }
+    return { puedeAccion, zonas, loading, error, riskBadge, exportarCSV }
   }
 })
 </script>
