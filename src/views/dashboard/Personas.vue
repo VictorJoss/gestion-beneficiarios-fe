@@ -7,12 +7,12 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
           <div class="form-card-title">
-            <h3>Crear persona</h3>
-            <span>Registra una persona asociada a una familia</span>
+            <h3>{{ editando ? 'Editar persona' : 'Crear persona' }}</h3>
+            <span>{{ editando ? 'Modifica los datos de la persona' : 'Registra una persona asociada a una familia' }}</span>
           </div>
         </div>
 
-        <form @submit.prevent="createPerson">
+        <form @submit.prevent="editando ? guardarEdicion() : createPerson()">
           <div class="form-grid">
             <div class="form-field">
               <label>Familia</label>
@@ -47,16 +47,35 @@
 
           <div class="form-actions">
             <button type="submit" class="btn btn-primary" :disabled="isLoading">
-              <span v-if="isLoading && mode === 'create'" class="spinner"></span>
+              <span v-if="isLoading" class="spinner"></span>
               <span v-else class="btn-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
               </span>
-              {{ isLoading && mode === 'create' ? 'Creando...' : 'Crear persona' }}
+              {{ isLoading ? (editando ? 'Guardando...' : 'Creando...') : (editando ? 'Guardar cambios' : 'Crear persona') }}
             </button>
-            <button type="button" class="btn btn-secondary" @click="reset" :disabled="isLoading">Limpiar</button>
+            <button v-if="editando" type="button" class="btn btn-secondary" @click="cancelarEdicion" :disabled="isLoading">Cancelar</button>
+            <button v-else type="button" class="btn btn-secondary" @click="reset" :disabled="isLoading">Limpiar</button>
           </div>
         </form>
       </article>
+    </div>
+
+    <!-- Modal confirmación eliminar -->
+    <div v-if="personaAEliminar" class="modal-overlay" @click.self="personaAEliminar = null">
+      <div class="modal-card">
+        <div class="modal-icon modal-icon--danger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </div>
+        <h4>¿Eliminar persona?</h4>
+        <p>Se eliminará a <strong>{{ personaAEliminar.nombre }}</strong> de forma permanente. Esta acción no se puede deshacer.</p>
+        <div class="modal-actions">
+          <button class="btn btn-danger" :disabled="isLoading" @click="confirmarEliminar">
+            <span v-if="isLoading" class="spinner dark"></span>
+            <span v-else>Sí, eliminar</span>
+          </button>
+          <button class="btn btn-secondary" @click="personaAEliminar = null" :disabled="isLoading">Cancelar</button>
+        </div>
+      </div>
     </div>
 
     <section v-if="showPanel || isListLoading" class="result-panel">
@@ -93,11 +112,19 @@
                   <span v-if="persona.es_embarazada" class="badge badge-pink">Embarazada</span>
                   <span v-if="persona.tiene_discapacidad" class="badge badge-warning">Discapacidad</span>
                   <span v-if="persona.tiene_enfermedad_cronica" class="badge badge-danger">Enfermedad crónica</span>
-                  <span v-if="!hasAnyFlag(persona)" class="badge badge-default">Sin caracter&iacute;sticas</span>
+                  <span v-if="!hasAnyFlag(persona)" class="badge badge-default">Sin características</span>
                 </div>
               </div>
               <div class="item-actions">
                 <span class="badge badge-default">ID {{ persona.id_persona }}</span>
+                <div class="item-action-btns">
+                  <button class="btn-icon-action btn-icon-action--edit" title="Editar" @click="iniciarEdicion(persona)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button class="btn-icon-action btn-icon-action--delete" title="Eliminar" @click="solicitarEliminar(persona)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                </div>
               </div>
             </li>
           </ul>
@@ -139,6 +166,10 @@ export default defineComponent({
   components: { LoadingState, EmptyState, ErrorState },
   setup() {
     const familias = ref<Familia[]>([])
+    const personas = ref<Persona[]>([])
+    const editando = ref(false)
+    const personaEditandoId = ref<number | null>(null)
+    const personaAEliminar = ref<Persona | null>(null)
 
     const form = reactive({
       id_familia: null as number | null,
@@ -154,10 +185,8 @@ export default defineComponent({
     const fieldErrors = reactive<Record<string, string>>({})
 
     const isLoading = ref(false)
-    const mode = ref<'create' | 'list' | null>(null)
     const showPanel = ref(false)
     const resultKind = ref<'success' | 'error'>('success')
-    const personas = ref<Persona[]>([])
     const isListLoading = ref(false)
     const errorMessage = ref('')
 
@@ -225,9 +254,8 @@ export default defineComponent({
     const createPerson = async () => {
       if (!validate()) return
       isLoading.value = true
-      mode.value = 'create'
       try {
-        const response: Persona = await personaService.create({
+        const nueva: Persona = await personaService.create({
           id_familia: form.id_familia ?? undefined,
           nombre: form.nombre.trim(),
           edad: form.edad ?? undefined,
@@ -238,8 +266,8 @@ export default defineComponent({
           tiene_enfermedad_cronica: form.tiene_enfermedad_cronica,
           es_cabeza_familia: form.es_cabeza_familia
         })
+        personas.value = [...personas.value, nueva]
         resultKind.value = 'success'
-        personas.value = [response]
         showPanel.value = true
         reset()
       } catch (err: any) {
@@ -248,35 +276,203 @@ export default defineComponent({
         showPanel.value = true
       } finally {
         isLoading.value = false
-        mode.value = null
       }
     }
 
-    const loadPersonas = async () => {
+    // FE-06: iniciar edición — carga los datos en el formulario
+    const iniciarEdicion = (persona: Persona) => {
+      editando.value = true
+      personaEditandoId.value = persona.id_persona
+      form.id_familia = persona.id_familia ?? null
+      form.nombre = persona.nombre
+      form.edad = persona.edad ?? null
+      form.es_nino = persona.es_nino
+      form.es_anciano = persona.es_anciano
+      form.es_embarazada = persona.es_embarazada
+      form.tiene_discapacidad = persona.tiene_discapacidad
+      form.tiene_enfermedad_cronica = persona.tiene_enfermedad_cronica
+      form.es_cabeza_familia = persona.es_cabeza_familia
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    const cancelarEdicion = () => {
+      editando.value = false
+      personaEditandoId.value = null
+      reset()
+    }
+
+    // FE-06: guardar edición — llama a personaService.update
+    const guardarEdicion = async () => {
+      if (!validate() || personaEditandoId.value === null) return
       isLoading.value = true
-      mode.value = 'list'
       try {
-        const response: Persona[] = await personaService.list()
-        resultKind.value = 'success'
-        personas.value = Array.isArray(response) ? response : []
-        showPanel.value = true
+        const actualizada: Persona = await personaService.update(personaEditandoId.value, {
+          id_familia: form.id_familia ?? undefined,
+          nombre: form.nombre.trim(),
+          edad: form.edad ?? undefined,
+          es_nino: form.es_nino,
+          es_anciano: form.es_anciano,
+          es_embarazada: form.es_embarazada,
+          tiene_discapacidad: form.tiene_discapacidad,
+          tiene_enfermedad_cronica: form.tiene_enfermedad_cronica,
+          es_cabeza_familia: form.es_cabeza_familia
+        })
+        personas.value = personas.value.map(p =>
+          p.id_persona === actualizada.id_persona ? actualizada : p
+        )
+        cancelarEdicion()
       } catch (err: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(err)
-        personas.value = []
         showPanel.value = true
       } finally {
         isLoading.value = false
-        mode.value = null
+      }
+    }
+
+    // FE-06: solicitar confirmación antes de eliminar
+    const solicitarEliminar = (persona: Persona) => {
+      personaAEliminar.value = persona
+    }
+
+    // FE-06: confirmar y ejecutar eliminación
+    const confirmarEliminar = async () => {
+      if (!personaAEliminar.value) return
+      isLoading.value = true
+      try {
+        await personaService.delete(personaAEliminar.value.id_persona)
+        personas.value = personas.value.filter(
+          p => p.id_persona !== personaAEliminar.value!.id_persona
+        )
+        personaAEliminar.value = null
+      } catch (err: any) {
+        resultKind.value = 'error'
+        errorMessage.value = extractError(err)
+        showPanel.value = true
+        personaAEliminar.value = null
+      } finally {
+        isLoading.value = false
       }
     }
 
     return {
-      form, fieldErrors, isLoading, mode, showPanel, resultKind,
+      form, fieldErrors, isLoading, showPanel, resultKind,
       personas, familias, isListLoading, errorMessage,
-      createPerson, loadPersonas, reset, closeResult,
-      getInitials, hasAnyFlag
+      editando, personaEditandoId, personaAEliminar,
+      createPerson, guardarEdicion, iniciarEdicion, cancelarEdicion,
+      solicitarEliminar, confirmarEliminar,
+      reset, closeResult, getInitials, hasAnyFlag
     }
   }
 })
 </script>
+
+<style scoped>
+.item-action-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.btn-icon-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid #eaecf0;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  color: #667085;
+  padding: 0;
+}
+
+.btn-icon-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-icon-action:hover {
+  transform: translateY(-1px);
+}
+
+.btn-icon-action--edit:hover {
+  background: #eef4ff;
+  border-color: #b2c8ff;
+  color: #1d4ed8;
+}
+
+.btn-icon-action--delete:hover {
+  background: #fef3f2;
+  border-color: #fecdca;
+  color: #b42318;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.45);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  animation: resultFade 0.2s ease;
+}
+
+.modal-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 32px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 24px 64px rgba(16, 24, 40, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.modal-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.modal-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.modal-icon--danger {
+  background: #fef3f2;
+  color: #b42318;
+  border: 1px solid #fecdca;
+}
+
+.modal-card h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #101828;
+}
+
+.modal-card p {
+  margin: 0;
+  font-size: 13.5px;
+  color: #667085;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  width: 100%;
+  justify-content: center;
+}
+</style>
