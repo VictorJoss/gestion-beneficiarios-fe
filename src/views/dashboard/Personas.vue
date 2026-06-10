@@ -95,7 +95,7 @@
           <div class="result-head-info">
             <span class="label">Listado de personas</span>
             <span v-if="resultKind === 'success' && Array.isArray(personas)" class="count">
-              <strong>{{ personas.length }}</strong> {{ personas.length === 1 ? 'persona' : 'personas' }}
+              <strong>{{ totalItems }}</strong> {{ totalItems === 1 ? 'persona' : 'personas' }}
             </span>
           </div>
           <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
@@ -138,13 +138,23 @@
             </li>
           </ul>
 
-          <div v-else-if="Array.isArray(personas) && personas.length === 0" class="empty-list">
+          <div v-if="Array.isArray(personas) && personas.length === 0" class="empty-list">
             <div class="icon">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
             <h4>Sin personas registradas</h4>
             <p>Aún no se han creado personas en la plataforma.</p>
           </div>
+
+          <Pagination
+            v-if="Array.isArray(personas) && personas.length > 0"
+            v-model:currentPage="currentPage"
+            v-model:pageSize="pageSize"
+            :total="totalItems"
+            :loading="isListLoading"
+            item-label="persona"
+            @change="onPageChange"
+          />
         </div>
 
         <div v-else class="toast error">
@@ -164,10 +174,12 @@
 <script lang="ts">
 import { defineComponent, reactive, ref, onMounted } from 'vue'
 import { familiaService, personaService } from '../../services/familia'
-import type { Persona, Familia } from '../../types'
+import Pagination from '../../components/Pagination.vue'
+import type { Persona, Familia, PaginatedResponse } from '../../types'
 
 export default defineComponent({
   name: 'DashboardPersonas',
+  components: { Pagination },
   setup() {
     const familias = ref<Familia[]>([])
     const personas = ref<Persona[]>([])
@@ -194,6 +206,33 @@ export default defineComponent({
     const isListLoading = ref(false)
     const errorMessage = ref('')
 
+    const currentPage = ref(1)
+    const pageSize = ref(6)
+    const totalItems = ref(0)
+
+    const loadPersonas = async (page: number = currentPage.value, size: number = pageSize.value) => {
+      isListLoading.value = true
+      showPanel.value = true
+      try {
+        const response: PaginatedResponse<Persona> = await personaService.list(page, size)
+        personas.value = response.items
+        totalItems.value = response.total
+        currentPage.value = response.page
+        pageSize.value = response.page_size
+        resultKind.value = 'success'
+      } catch (err: any) {
+        resultKind.value = 'error'
+        errorMessage.value = extractError(err)
+        personas.value = []
+      } finally {
+        isListLoading.value = false
+      }
+    }
+
+    const onPageChange = (payload: { page: number; pageSize: number }) => {
+      loadPersonas(payload.page, payload.pageSize)
+    }
+
     const extractError = (err: any): string => {
       const detail = err?.response?.data?.detail
       if (typeof detail === 'string') return detail
@@ -203,23 +242,12 @@ export default defineComponent({
 
     onMounted(async () => {
       try {
-        familias.value = await familiaService.list()
+        const familiasRes: PaginatedResponse<Familia> = await familiaService.list(1, 100)
+        familias.value = familiasRes.items
       } catch {
         // silent
       }
-      isListLoading.value = true
-      try {
-        const response = await personaService.list()
-        personas.value = Array.isArray(response) ? response : []
-        resultKind.value = 'success'
-        showPanel.value = true
-      } catch (err: any) {
-        resultKind.value = 'error'
-        errorMessage.value = extractError(err)
-        showPanel.value = true
-      } finally {
-        isListLoading.value = false
-      }
+      await loadPersonas()
     })
 
     const validate = (): boolean => {
@@ -259,7 +287,7 @@ export default defineComponent({
       if (!validate()) return
       isLoading.value = true
       try {
-        const nueva: Persona = await personaService.create({
+        await personaService.create({
           id_familia: form.id_familia ?? undefined,
           nombre: form.nombre.trim(),
           edad: form.edad ?? undefined,
@@ -270,10 +298,9 @@ export default defineComponent({
           tiene_enfermedad_cronica: form.tiene_enfermedad_cronica,
           es_cabeza_familia: form.es_cabeza_familia
         })
-        personas.value = [...personas.value, nueva]
         resultKind.value = 'success'
-        showPanel.value = true
         reset()
+        await loadPersonas(1, pageSize.value)
       } catch (err: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(err)
@@ -283,7 +310,6 @@ export default defineComponent({
       }
     }
 
-    // FE-06: iniciar edición — carga los datos en el formulario
     const iniciarEdicion = (persona: Persona) => {
       editando.value = true
       personaEditandoId.value = persona.id_persona
@@ -305,12 +331,11 @@ export default defineComponent({
       reset()
     }
 
-    // FE-06: guardar edición — llama a personaService.update
     const guardarEdicion = async () => {
       if (!validate() || personaEditandoId.value === null) return
       isLoading.value = true
       try {
-        const actualizada: Persona = await personaService.update(personaEditandoId.value, {
+        await personaService.update(personaEditandoId.value, {
           id_familia: form.id_familia ?? undefined,
           nombre: form.nombre.trim(),
           edad: form.edad ?? undefined,
@@ -321,10 +346,8 @@ export default defineComponent({
           tiene_enfermedad_cronica: form.tiene_enfermedad_cronica,
           es_cabeza_familia: form.es_cabeza_familia
         })
-        personas.value = personas.value.map(p =>
-          p.id_persona === actualizada.id_persona ? actualizada : p
-        )
         cancelarEdicion()
+        await loadPersonas()
       } catch (err: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(err)
@@ -334,21 +357,17 @@ export default defineComponent({
       }
     }
 
-    // FE-06: solicitar confirmación antes de eliminar
     const solicitarEliminar = (persona: Persona) => {
       personaAEliminar.value = persona
     }
 
-    // FE-06: confirmar y ejecutar eliminación
     const confirmarEliminar = async () => {
       if (!personaAEliminar.value) return
       isLoading.value = true
       try {
         await personaService.delete(personaAEliminar.value.id_persona)
-        personas.value = personas.value.filter(
-          p => p.id_persona !== personaAEliminar.value!.id_persona
-        )
         personaAEliminar.value = null
+        await loadPersonas()
       } catch (err: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(err)
@@ -363,9 +382,10 @@ export default defineComponent({
       form, fieldErrors, isLoading, showPanel, resultKind,
       personas, familias, isListLoading, errorMessage,
       editando, personaEditandoId, personaAEliminar,
+      currentPage, pageSize, totalItems,
       createPerson, guardarEdicion, iniciarEdicion, cancelarEdicion,
       solicitarEliminar, confirmarEliminar,
-      reset, closeResult, getInitials, hasAnyFlag
+      reset, closeResult, getInitials, hasAnyFlag, onPageChange
     }
   }
 })

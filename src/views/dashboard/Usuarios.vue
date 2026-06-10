@@ -90,7 +90,7 @@
         <div class="result-head-info">
           <span class="label">Listado de usuarios</span>
           <span v-if="resultKind === 'success' && !isLoading && Array.isArray(usuarios)" class="count">
-            <strong>{{ usuarios.length }}</strong> {{ usuarios.length === 1 ? 'registro' : 'registros' }}
+            <strong>{{ totalItems }}</strong> {{ totalItems === 1 ? 'registro' : 'registros' }}
           </span>
         </div>
         <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
@@ -143,17 +143,27 @@
           </ul>
 
           <EmptyState
-            v-else-if="Array.isArray(usuarios) && usuarios.length === 0"
+            v-if="Array.isArray(usuarios) && usuarios.length === 0"
             title="Sin usuarios registrados"
             message="Aún no se han creado usuarios en la plataforma."
           />
 
-          <div v-else class="detail-card">
+          <div v-if="resultKind === 'success' && !Array.isArray(usuarios)" class="detail-card">
             <div class="detail-row">
               <span class="k">Detalle</span>
               <span class="v">Usuario creado correctamente.</span>
             </div>
           </div>
+
+          <Pagination
+            v-if="Array.isArray(usuarios) && usuarios.length > 0"
+            v-model:currentPage="currentPage"
+            v-model:pageSize="pageSize"
+            :total="totalItems"
+            :loading="isLoading"
+            item-label="registro"
+            @change="onPageChange"
+          />
         </div>
 
         <ErrorState
@@ -181,18 +191,19 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, ref } from 'vue'
+import { defineComponent, reactive, ref, onMounted } from 'vue'
 import { userService } from '../../services/users'
 import { usePermissions } from '../../composables/usePermissions'
-import type { Usuario, UserRole } from '../../types'
+import type { Usuario, UserRole, PaginatedResponse } from '../../types'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import LoadingState from '../../components/LoadingState.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import ErrorState from '../../components/ErrorState.vue'
+import Pagination from '../../components/Pagination.vue'
 
 export default defineComponent({
   name: 'DashboardUsuarios',
-  components: { ConfirmDialog, LoadingState, EmptyState, ErrorState },
+  components: { ConfirmDialog, LoadingState, EmptyState, ErrorState, Pagination },
   setup() {
     const { puedeAccion } = usePermissions()
 
@@ -219,6 +230,42 @@ export default defineComponent({
     const showStateConfirm = ref(false)
     const isTogglingState = ref(false)
     const userToToggle = ref<Usuario | null>(null)
+
+    // Paginación
+    const currentPage = ref(1)
+    const pageSize = ref(6)
+    const totalItems = ref(0)
+
+    const loadUsers = async (page: number = currentPage.value, size: number = pageSize.value) => {
+      isLoading.value = true
+      mode.value = 'list'
+      showPanel.value = true
+      try {
+        const response: PaginatedResponse<Usuario> = await userService.list(page, size)
+        resultKind.value = 'success'
+        usuarios.value = response.items
+        totalItems.value = response.total
+        currentPage.value = response.page
+        pageSize.value = response.page_size
+      } catch (err: any) {
+        resultKind.value = 'error'
+        errorMessage.value = extractError(err)
+        usuarios.value = []
+      } finally {
+        isLoading.value = false
+        mode.value = null
+      }
+    }
+
+    const onPageChange = (payload: { page: number; pageSize: number }) => {
+      loadUsers(payload.page, payload.pageSize)
+    }
+
+    onMounted(async () => {
+      if (puedeAccion('usuarios.listar')) {
+        await loadUsers()
+      }
+    })
 
     const validate = (): boolean => {
       Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
@@ -279,16 +326,15 @@ export default defineComponent({
       isLoading.value = true
       mode.value = 'create'
       try {
-        const response: Usuario = await userService.create({
+        await userService.create({
           nombre_completo: form.nombre_completo.trim(),
           correo: form.correo.trim(),
           password: form.password,
           rol: form.rol
         })
         resultKind.value = 'success'
-        usuarios.value = [response]
-        showPanel.value = true
         resetForm()
+        await loadUsers(1, pageSize.value)
       } catch (err: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(err)
@@ -329,8 +375,8 @@ export default defineComponent({
         await userService.update(editingUserId.value, updateData)
         
         // Refresh the list to show updated data
-        await loadUsers()
         resetForm()
+        await loadUsers()
       } catch (err: any) {
         showPanel.value = true
         resultKind.value = 'error'
@@ -370,24 +416,6 @@ export default defineComponent({
       } finally {
         isTogglingState.value = false
         userToToggle.value = null
-      }
-    }
-
-    const loadUsers = async () => {
-      isLoading.value = true
-      mode.value = 'list'
-      showPanel.value = true
-      try {
-        const response: Usuario[] = await userService.list()
-        resultKind.value = 'success'
-        usuarios.value = Array.isArray(response) ? response : []
-      } catch (err: any) {
-        resultKind.value = 'error'
-        errorMessage.value = extractError(err)
-        usuarios.value = []
-      } finally {
-        isLoading.value = false
-        mode.value = null
       }
     }
 
@@ -434,7 +462,8 @@ export default defineComponent({
       form, fieldErrors, isLoading, mode, showPanel, resultKind,
       usuarios, errorMessage, isEditing,
       showStateConfirm, isTogglingState, userToToggle,
-      submitForm, createUser, loadUsers, resetForm, closeResult,
+      currentPage, pageSize, totalItems,
+      submitForm, createUser, loadUsers, onPageChange, resetForm, closeResult,
       editUser, promptToggleStatus, toggleUserStatus,
       getInitials, avatarVariant, roleBadgeClass, formatDateTime, puedeAccion
     }
