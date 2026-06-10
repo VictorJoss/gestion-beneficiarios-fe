@@ -305,16 +305,20 @@ export interface TrasladoResponse {
 }
 
 // Indicadores Panel
+export interface RecursoDisponible {
+  nombre: string
+  cantidad: number
+}
+
 export interface IndicadoresPanelResponse {
-  total_familias?: number
-  total_personas?: number
-  total_usuarios?: number
-  total_bodegas?: number
-  total_refugios?: number
-  total_recursos?: number
-  entregas_mes?: number
-  familias_alto_riesgo?: number
-  [key: string]: unknown
+  total_familias: number
+  familias_atendidas: number
+  familias_pendientes: number
+  planes_programados: number
+  planes_entregados: number
+  focos_sanitarios_activos: number
+  focos_sanitarios_en_atencion: number
+  recursos_disponibles: RecursoDisponible[]
 }
 
 // API Response Types

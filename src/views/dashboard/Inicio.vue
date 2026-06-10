@@ -30,13 +30,62 @@
         <span class="arrow">→</span>
       </router-link>
     </section>
+    <section class="kpis-section" v-if="indicadores && !loading">
+      <h3>Resumen General</h3>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-title">Familias Registradas</div>
+          <div class="kpi-value">{{ indicadores.total_familias }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Familias Atendidas</div>
+          <div class="kpi-value">{{ indicadores.familias_atendidas }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Familias Pendientes</div>
+          <div class="kpi-value">{{ indicadores.familias_pendientes }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Focos Sanitarios Activos</div>
+          <div class="kpi-value">{{ indicadores.focos_sanitarios_activos }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Planes Programados</div>
+          <div class="kpi-value">{{ indicadores.planes_programados }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Planes Entregados</div>
+          <div class="kpi-value">{{ indicadores.planes_entregados }}</div>
+        </div>
+      </div>
+      
+      <h3 v-if="indicadores.recursos_disponibles.length" style="margin-top: 1.5rem;">Recursos en Inventario</h3>
+      <div class="kpi-grid" v-if="indicadores.recursos_disponibles.length">
+        <div class="kpi-card resource-card" v-for="rec in indicadores.recursos_disponibles" :key="rec.nombre">
+          <div class="kpi-title">{{ rec.nombre }}</div>
+          <div class="kpi-value small">{{ rec.cantidad }}</div>
+        </div>
+      </div>
+    </section>
+
+    <div v-else-if="loading" class="loading-state">
+      <div class="skeleton-line w-100" style="height: 100px;"></div>
+    </div>
+    <div v-else-if="error" class="toast error">
+      <div>
+        <strong>Error cargando indicadores</strong>
+        <div>{{ error }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent } from 'vue'
+import { computed, defineComponent, onMounted, ref } from 'vue'
 import { authService } from '../../services/auth'
 import { usePermissions } from '../../composables/usePermissions'
+import { indicadoresService } from '../../services/operaciones'
+import type { IndicadoresPanelResponse } from '../../types'
 
 interface Shortcut {
   to: string
@@ -51,6 +100,22 @@ export default defineComponent({
     const usuario = authService.getUser()
     const token = authService.getToken()
     const { puedeAccion, rolLabel } = usePermissions()
+
+    const indicadores = ref<IndicadoresPanelResponse | null>(null)
+    const loading = ref(false)
+    const error = ref('')
+
+    onMounted(async () => {
+      loading.value = true
+      error.value = ''
+      try {
+        indicadores.value = await indicadoresService.obtenerPanel()
+      } catch {
+        error.value = 'No se pudo cargar el resumen de indicadores.'
+      } finally {
+        loading.value = false
+      }
+    })
 
     const firstName = computed(() => {
       const name = usuario?.nombre_completo || 'usuario'
@@ -78,7 +143,7 @@ export default defineComponent({
       })
     })
 
-    return { usuario, token, firstName, rolLabel, shortcuts }
+    return { usuario, token, firstName, rolLabel, shortcuts, indicadores, loading, error }
   }
 })
 </script>
@@ -90,5 +155,60 @@ export default defineComponent({
   border-radius: 10px;
   display: grid;
   place-items: center;
+}
+
+.kpis-section {
+  margin-top: 2rem;
+}
+
+.kpis-section h3 {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  color: var(--color-text-light);
+  font-weight: 600;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.kpi-card {
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.kpi-title {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.kpi-value.small {
+  font-size: 1.5rem;
+}
+
+.resource-card {
+  border-left: 4px solid var(--color-primary);
 }
 </style>
