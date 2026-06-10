@@ -50,6 +50,21 @@
           <div class="form-actions"><button type="submit" class="btn btn-primary" :disabled="loading.inv">{{ loading.inv ? 'Consultando...' : 'Consultar inventario' }}</button></div>
         </form>
       </article>
+
+      <article v-if="puedeAccion('recursos.inventario')" class="form-card">
+        <div class="form-card-head">
+          <div class="form-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="form-card-title"><h3>Alertas de inventario</h3><span>Verifica recursos bajo umbral mínimo</span></div>
+        </div>
+        <form @submit.prevent="loadAlerts">
+          <div class="form-grid single">
+            <div class="form-field"><label>ID de bodega (opcional)</label><select v-model.number="warehouseIdAlerts" class="select"><option :value="null">Todas las bodegas</option><option v-for="b in bodegas" :key="b.id_bodega" :value="b.id_bodega">{{ b.nombre }}</option></select></div>
+          </div>
+          <div class="form-actions"><button type="submit" class="btn btn-primary" :disabled="loading.alerts" style="background-color: var(--color-danger); border-color: var(--color-danger)">{{ loading.alerts ? 'Consultando...' : 'Ver alertas' }}</button></div>
+        </form>
+      </article>
     </div>
 
     <section v-if="showPanel" class="result-panel">
@@ -124,6 +139,27 @@
             />
           </div>
         </div>
+        <div v-if="alertsData" class="inventory-result">
+          <div class="inv-bodega-card" style="border-left: 4px solid var(--color-danger)">
+            <div class="inv-bodega-head">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <h4 style="color: var(--color-danger)">Alertas Activas: {{ alertsData.total_alertas }}</h4>
+            </div>
+            <table v-if="alertsData.alertas.length" class="inv-table">
+              <thead><tr><th>Recurso</th><th>Bodega</th><th>Disponible</th><th>Umbral</th></tr></thead>
+              <tbody>
+                <tr v-for="(alerta, index) in alertsData.alertas" :key="index">
+                  <td>{{ alerta.nombre }}</td>
+                  <td>{{ alerta.bodega || '—' }}</td>
+                  <td class="num" style="color: var(--color-danger); font-weight: bold;">{{ alerta.cantidad_disponible }}</td>
+                  <td class="num">{{ alerta.umbral_alerta }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-else class="empty-mini">No hay alertas activas para esta consulta</div>
+          </div>
+        </div>
+      </div>
 
         <ErrorState
           v-else-if="resultKind === 'error'"
@@ -142,7 +178,7 @@ import { defineComponent, reactive, ref, computed, onMounted } from 'vue'
 import { recursoService, bodegaService } from '../../services/ubicaciones'
 import { inventarioService } from '../../services/operaciones'
 import { usePermissions } from '../../composables/usePermissions'
-import type { Recurso, CategoriaRecurso, InventarioConsultaResponse, Bodega } from '../../types'
+import type { Recurso, CategoriaRecurso, InventarioConsultaResponse, Bodega, InventarioAlertasResponse } from '../../types'
 import LoadingState from '../../components/LoadingState.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import ErrorState from '../../components/ErrorState.vue'
@@ -155,7 +191,8 @@ export default defineComponent({
     const resource = reactive({ nombre: '', categoria: 'ALIMENTOS', unidad_medida: 'UNIDAD', peso_unitario_kg: null as number | null, umbral_alerta: null as number | null })
     const bodegas = ref<Bodega[]>([])
     const warehouseId = ref<number | null>(null)
-    const loading = reactive({ create: false, inv: false })
+    const warehouseIdAlerts = ref<number | null>(null)
+    const loading = reactive({ create: false, inv: false, alerts: false })
 
     onMounted(async () => {
       try {
@@ -166,14 +203,16 @@ export default defineComponent({
     })
     const showPanel = ref(false)
     const resultKind = ref<'success' | 'error'>('success')
-    const mode = ref<'create' | 'inventory' | null>(null)
+    const mode = ref<'create' | 'inventory' | 'alerts' | null>(null)
     const createdResource = ref<Recurso | null>(null)
     const inventoryData = ref<InventarioConsultaResponse | null>(null)
+    const alertsData = ref<InventarioAlertasResponse | null>(null)
     const errorMessage = ref('')
 
     const panelTitle = computed(() => {
       if (mode.value === 'create') return 'Recurso creado'
       if (mode.value === 'inventory') return 'Inventario'
+      if (mode.value === 'alerts') return 'Alertas de Inventario'
       return 'Resultado'
     })
 
@@ -188,6 +227,7 @@ export default defineComponent({
       showPanel.value = false
       createdResource.value = null
       inventoryData.value = null
+      alertsData.value = null
       errorMessage.value = ''
     }
 
@@ -245,21 +285,45 @@ export default defineComponent({
         resultKind.value = 'success'
         inventoryData.value = result
         createdResource.value = null
+        alertsData.value = null
       } catch (e: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(e)
         inventoryData.value = null
         createdResource.value = null
+        alertsData.value = null
       } finally {
         loading.inv = false
       }
     }
 
+    const loadAlerts = async () => {
+      loading.alerts = true
+      mode.value = 'alerts'
+      try {
+        const result = await inventarioService.obtenerAlertas(warehouseIdAlerts.value ?? undefined)
+        resultKind.value = 'success'
+        alertsData.value = result
+        inventoryData.value = null
+        createdResource.value = null
+        showPanel.value = true
+      } catch (e: any) {
+        resultKind.value = 'error'
+        errorMessage.value = extractError(e)
+        alertsData.value = null
+        inventoryData.value = null
+        createdResource.value = null
+        showPanel.value = true
+      } finally {
+        loading.alerts = false
+      }
+    }
+
     return {
-      resource, bodegas, warehouseId, loading, showPanel, resultKind, mode,
-      createdResource, inventoryData, errorMessage,
+      resource, bodegas, warehouseId, warehouseIdAlerts, loading, showPanel, resultKind, mode,
+      createdResource, inventoryData, alertsData, errorMessage,
       panelTitle, closeResult, categoriaBadge,
-      createResource, loadInventory, onRetry, puedeAccion
+      createResource, loadInventory, loadAlerts, onRetry, puedeAccion
     }
   }
 })
