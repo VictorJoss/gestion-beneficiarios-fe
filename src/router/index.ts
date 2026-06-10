@@ -60,14 +60,14 @@ const routes = [
         component: () => import('../views/dashboard/EstadosSandbox.vue')
       },
       {
-        path: 'entregas',
-        name: 'DashboardEntregas',
-        component: () => import('../views/dashboard/Entregas.vue')
-        },
-        {
         path: 'reportes',
         name: 'DashboardReportes',
         component: () => import('../views/dashboard/Reportes.vue')
+      },
+      {
+        path: 'planes-distribucion',
+        name: 'DashboardPlanesDistribucion',
+        component: () => import('../views/dashboard/PlanesDistribucion.vue')
       }
     ]
   }

@@ -4,7 +4,9 @@ import type {
   InventarioConsultaResponse,
   InventarioAlertasResponse,
   FocoSanitario, FocoSanitarioCreate,
-  IndicadoresPanelResponse
+  IndicadoresPanelResponse,
+  PlanDistribucion,
+  GenerarPlanResponse
 } from '../types'
 
 // Entregas
@@ -97,18 +99,18 @@ export class ReportesService {
 
 // Planes de Distribución
 export class PlanDistribucionService {
-  async listar(): Promise<any[]> {
-    const response = await api.get('/planes-distribucion/')
+  async listar(): Promise<PlanDistribucion[]> {
+    const response = await api.get<PlanDistribucion[]>('/planes-distribucion/')
     return response.data
   }
 
-  async get(id: number): Promise<any> {
-    const response = await api.get(`/planes-distribucion/${id}`)
+  async get(id: number): Promise<PlanDistribucion> {
+    const response = await api.get<PlanDistribucion>(`/planes-distribucion/${id}`)
     return response.data
   }
 
-  async generar(): Promise<any> {
-    const response = await api.post('/planes-distribucion/generar')
+  async generar(): Promise<GenerarPlanResponse> {
+    const response = await api.post<GenerarPlanResponse>('/planes-distribucion/generar')
     return response.data
   }
 }
