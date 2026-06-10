@@ -133,10 +133,11 @@
           <div class="detail-row"><span class="k">Detalle</span><span class="v">Operaci&oacute;n completada correctamente.</span></div>
         </div>
       </div>
-      <div v-else class="toast error">
-        <span class="toast-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg></span>
-        <div><strong>No se pudo completar la operaci&oacute;n.</strong><div>{{ errorMessage }}</div></div>
-      </div>
+      <ErrorState
+        v-else
+        title="No se pudo completar la operación."
+        :message="errorMessage"
+      />
     </section>
 
     <!-- Zonas list -->
@@ -148,9 +149,7 @@
         </div>
         <button class="btn btn-ghost" @click="loadZonas">↻ Recargar</button>
       </div>
-      <div v-if="isZonasLoading" class="item-list">
-        <div v-for="n in 4" :key="n" class="skeleton-item"><div class="skeleton-avatar"></div><div class="skeleton-body"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div></div>
-      </div>
+      <LoadingState v-if="isZonasLoading" variant="skeleton" :count="3" label="Cargando zonas..." />
       <ul v-else-if="zonasList.length" class="item-list">
         <li v-for="item in zonasList" :key="item.id_zona" class="item-card">
           <div class="item-avatar variant-green"><span v-html="ZONA_ICON"></span></div>
@@ -162,7 +161,11 @@
           <div class="item-actions"><span class="badge badge-default">ID {{ item.id_zona }}</span></div>
         </li>
       </ul>
-      <div v-else class="empty-list"><div class="icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg></div><h4>Sin zonas</h4><p>A&uacute;n no hay zonas registradas.</p></div>
+      <EmptyState
+        v-else
+        title="Sin zonas"
+        message="Aún no hay zonas registradas."
+      />
     </section>
 
     <!-- Refugios list -->
@@ -174,9 +177,7 @@
         </div>
         <button class="btn btn-ghost" @click="loadRefugios">↻ Recargar</button>
       </div>
-      <div v-if="isRefugiosLoading" class="item-list">
-        <div v-for="n in 4" :key="n" class="skeleton-item"><div class="skeleton-avatar"></div><div class="skeleton-body"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div></div>
-      </div>
+      <LoadingState v-if="isRefugiosLoading" variant="skeleton" :count="3" label="Cargando refugios..." />
       <ul v-else-if="refugiosList.length" class="item-list">
         <li v-for="item in refugiosList" :key="item.id" class="item-card">
           <div class="item-avatar variant-amber"><span v-html="REFUGIO_ICON"></span></div>
@@ -191,7 +192,11 @@
           <div class="item-actions"><span class="badge badge-default">ID {{ item.id }}</span></div>
         </li>
       </ul>
-      <div v-else class="empty-list"><div class="icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg></div><h4>Sin refugios</h4><p>A&uacute;n no hay refugios registrados.</p></div>
+      <EmptyState
+        v-else
+        title="Sin refugios"
+        message="Aún no hay refugios registrados."
+      />
     </section>
 
     <!-- Bodegas list -->
@@ -203,9 +208,7 @@
         </div>
         <button class="btn btn-ghost" @click="loadBodegas">↻ Recargar</button>
       </div>
-      <div v-if="isBodegasLoading" class="item-list">
-        <div v-for="n in 4" :key="n" class="skeleton-item"><div class="skeleton-avatar"></div><div class="skeleton-body"><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div></div>
-      </div>
+      <LoadingState v-if="isBodegasLoading" variant="skeleton" :count="3" label="Cargando bodegas..." />
       <ul v-else-if="bodegasList.length" class="item-list">
         <li v-for="item in bodegasList" :key="item.id_bodega" class="item-card">
           <div class="item-avatar variant-cyan"><span v-html="BODEGA_ICON"></span></div>
@@ -217,10 +220,13 @@
               <span v-if="item.has_alerta" class="badge badge-danger">⚠ Alerta</span>
             </div>
           </div>
-          <div class="item-actions"><span class="badge badge-default">ID {{ item.id_bodega }}</span></div>
         </li>
       </ul>
-      <div v-else class="empty-list"><div class="icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg></div><h4>Sin bodegas</h4><p>A&uacute;n no hay bodegas registradas.</p></div>
+      <EmptyState
+        v-else
+        title="Sin bodegas"
+        message="Aún no hay bodegas registradas."
+      />
     </section>
   </div>
 </template>
@@ -230,6 +236,9 @@ import { defineComponent, reactive, ref, computed, onMounted } from 'vue'
 import { bodegaService, refugioService, zonaService } from '../../services/ubicaciones'
 import { usePermissions } from '../../composables/usePermissions'
 import type { Zona } from '../../types'
+import LoadingState from '../../components/LoadingState.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import ErrorState from '../../components/ErrorState.vue'
 
 type ItemKind = 'zona' | 'refugio' | 'bodega' | 'generic'
 
@@ -239,6 +248,7 @@ const BODEGA_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none"
 
 export default defineComponent({
   name: 'DashboardUbicaciones',
+  components: { LoadingState, EmptyState, ErrorState },
   setup() {
     const { puedeAccion } = usePermissions()
 
@@ -305,7 +315,7 @@ export default defineComponent({
       isLoading.value = true
       mode.value = 'zone'
       try {
-        createdItem.value = await zonaService.create({ nombre: zone.nombre.trim(), nivel_riesgo: zone.nivel_riesgo })
+        createdItem.value = await zonaService.create({ nombre: zone.nombre.trim(), nivel_riesgo: zone.nivel_riesgo as any })
         resultKind.value = 'success'
         showPanel.value = true
         zone.nombre = ''
@@ -465,7 +475,7 @@ export default defineComponent({
     }
 
     const riskClass = (level: string): string => {
-      const map: Record<string, string> = { bajo: 'badge-success', medio: 'badge-warning', alto: 'badge-danger', crítico: 'badge-dark' }
+      const map: Record<string, string> = { bajo: 'badge-success', medio: 'badge-warning', alto: 'badge-danger', 'crítico': 'badge-dark' }
       return map[level] || 'badge-default'
     }
 

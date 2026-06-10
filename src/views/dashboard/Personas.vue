@@ -79,16 +79,7 @@
     </div>
 
     <section v-if="showPanel || isListLoading" class="result-panel">
-      <div v-if="isListLoading" class="item-list">
-        <div v-for="n in 4" :key="n" class="skeleton-item">
-          <div class="skeleton-avatar"></div>
-          <div class="skeleton-body">
-            <div class="skeleton-line w-60"></div>
-            <div class="skeleton-line w-40"></div>
-            <div class="skeleton-line w-80"></div>
-          </div>
-        </div>
-      </div>
+      <LoadingState v-if="isListLoading" variant="skeleton" :count="4" label="Cargando personas..." />
 
       <template v-else>
         <div class="result-head">
@@ -138,24 +129,25 @@
             </li>
           </ul>
 
-          <div v-else-if="Array.isArray(personas) && personas.length === 0" class="empty-list">
-            <div class="icon">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <EmptyState
+            v-else-if="Array.isArray(personas) && personas.length === 0"
+            title="Sin personas registradas"
+            message="Aún no se han creado personas en la plataforma."
+          />
+
+          <div v-else class="detail-card">
+            <div class="detail-row">
+              <span class="k">Detalle</span>
+              <span class="v">Persona creada correctamente.</span>
             </div>
-            <h4>Sin personas registradas</h4>
-            <p>Aún no se han creado personas en la plataforma.</p>
           </div>
         </div>
 
-        <div v-else class="toast error">
-          <span class="toast-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-          </span>
-          <div>
-            <strong>No se pudo completar la operación.</strong>
-            <div>{{ errorMessage }}</div>
-          </div>
-        </div>
+        <ErrorState
+          v-else
+          title="No se pudo completar la operación."
+          :message="errorMessage"
+        />
       </template>
     </section>
   </div>
@@ -165,9 +157,13 @@
 import { defineComponent, reactive, ref, onMounted } from 'vue'
 import { familiaService, personaService } from '../../services/familia'
 import type { Persona, Familia } from '../../types'
+import LoadingState from '../../components/LoadingState.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import ErrorState from '../../components/ErrorState.vue'
 
 export default defineComponent({
   name: 'DashboardPersonas',
+  components: { LoadingState, EmptyState, ErrorState },
   setup() {
     const familias = ref<Familia[]>([])
     const personas = ref<Persona[]>([])

@@ -45,16 +45,7 @@
     </div>
 
     <section v-if="showPanel || isListLoading" class="result-panel">
-      <div v-if="isListLoading" class="item-list">
-        <div v-for="n in 4" :key="n" class="skeleton-item">
-          <div class="skeleton-avatar"></div>
-          <div class="skeleton-body">
-            <div class="skeleton-line w-60"></div>
-            <div class="skeleton-line w-40"></div>
-            <div class="skeleton-line w-80"></div>
-          </div>
-        </div>
-      </div>
+      <LoadingState v-if="isListLoading" variant="skeleton" :count="4" label="Cargando familias..." />
 
       <template v-else>
         <div class="result-head">
@@ -92,13 +83,11 @@
             </li>
           </ul>
 
-          <div v-else-if="Array.isArray(familias) && familias.length === 0" class="empty-list">
-            <div class="icon">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            </div>
-            <h4>Sin familias registradas</h4>
-            <p>Aún no se han creado familias en la plataforma.</p>
-          </div>
+          <EmptyState
+            v-else-if="Array.isArray(familias) && familias.length === 0"
+            title="Sin familias registradas"
+            message="Aún no se han creado familias en la plataforma."
+          />
 
           <div v-else class="detail-card">
             <div class="detail-row">
@@ -108,15 +97,11 @@
           </div>
         </div>
 
-        <div v-else class="toast error">
-          <span class="toast-icon">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-          </span>
-          <div>
-            <strong>No se pudo completar la operaci&oacute;n.</strong>
-            <div>{{ errorMessage }}</div>
-          </div>
-        </div>
+        <ErrorState
+          v-else
+          title="No se pudo completar la operación."
+          :message="errorMessage"
+        />
       </template>
     </section>
   </div>
@@ -128,9 +113,13 @@ import { familiaService } from '../../services/familia'
 import { zonaService } from '../../services/ubicaciones'
 import { usePermissions } from '../../composables/usePermissions'
 import type { Familia, Zona } from '../../types'
+import LoadingState from '../../components/LoadingState.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import ErrorState from '../../components/ErrorState.vue'
 
 export default defineComponent({
   name: 'DashboardFamilias',
+  components: { LoadingState, EmptyState, ErrorState },
   setup() {
     const { puedeAccion } = usePermissions()
     const form = reactive({ acepta_privacidad: true, id_zona: null as number | null })

@@ -45,11 +45,11 @@
 
           <div class="form-actions">
             <button type="submit" class="btn btn-primary" :disabled="isLoading">
-              <span v-if="isLoading" class="spinner"></span>
+              <span v-if="isLoading && mode === 'create'" class="spinner"></span>
               <span v-else class="btn-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6" /><path d="M22 11h-6" /></svg>
               </span>
-              {{ isLoading ? 'Creando...' : 'Crear usuario' }}
+              {{ isLoading && mode === 'create' ? 'Creando...' : 'Crear usuario' }}
             </button>
             <button type="button" class="btn btn-secondary" @click="resetForm">Limpiar</button>
           </div>
@@ -87,65 +87,70 @@
       <div class="result-head">
         <div class="result-head-info">
           <span class="label">Listado de usuarios</span>
-          <span v-if="resultKind === 'success' && Array.isArray(usuarios)" class="count">
+          <span v-if="resultKind === 'success' && !isLoading && Array.isArray(usuarios)" class="count">
             <strong>{{ usuarios.length }}</strong> {{ usuarios.length === 1 ? 'registro' : 'registros' }}
           </span>
         </div>
         <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
       </div>
 
-      <div v-if="resultKind === 'success'">
-        <ul v-if="Array.isArray(usuarios) && usuarios.length" class="item-list">
-          <li v-for="user in usuarios" :key="user.id_usuario" class="item-card">
-            <div class="item-avatar" :class="avatarVariant(user.rol)">
-              {{ getInitials(user.nombre_completo) }}
-            </div>
-            <div class="item-content">
-              <h4>{{ user.nombre_completo }}</h4>
-              <p>{{ user.correo }}</p>
-              <div class="item-meta">
-                <span class="badge" :class="roleBadgeClass(user.rol)">{{ user.rol }}</span>
-                <span class="status">
-                  <span class="dot" :class="user.activo ? 'on' : 'off'"></span>
-                  {{ user.activo ? 'Activo' : 'Inactivo' }}
-                </span>
+      <LoadingState
+        v-if="isLoading && mode === 'list'"
+        variant="skeleton"
+        :count="4"
+        label="Cargando usuarios..."
+      />
+
+      <template v-else>
+        <div v-if="resultKind === 'success'">
+          <ul v-if="Array.isArray(usuarios) && usuarios.length" class="item-list">
+            <li v-for="user in usuarios" :key="user.id_usuario" class="item-card">
+              <div class="item-avatar" :class="avatarVariant(user.rol)">
+                {{ getInitials(user.nombre_completo) }}
               </div>
-              <div class="item-dates">
-                <span v-if="user.fecha_creacion" class="date-line">Creado: {{ formatDateTime(user.fecha_creacion) }}</span>
-                <span v-if="user.fecha_actualizacion" class="date-line">Actualizado: {{ formatDateTime(user.fecha_actualizacion) }}</span>
+              <div class="item-content">
+                <h4>{{ user.nombre_completo }}</h4>
+                <p>{{ user.correo }}</p>
+                <div class="item-meta">
+                  <span class="badge" :class="roleBadgeClass(user.rol)">{{ user.rol }}</span>
+                  <span class="status">
+                    <span class="dot" :class="user.activo ? 'on' : 'off'"></span>
+                    {{ user.activo ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </div>
+                <div class="item-dates">
+                  <span v-if="user.fecha_creacion" class="date-line">Creado: {{ formatDateTime(user.fecha_creacion) }}</span>
+                  <span v-if="user.fecha_actualizacion" class="date-line">Actualizado: {{ formatDateTime(user.fecha_actualizacion) }}</span>
+                </div>
               </div>
-            </div>
-            <div class="item-actions">
-              <span class="badge badge-default">ID {{ user.id_usuario }}</span>
-            </div>
-          </li>
-        </ul>
+              <div class="item-actions">
+                <span class="badge badge-default">ID {{ user.id_usuario }}</span>
+              </div>
+            </li>
+          </ul>
 
-        <div v-else-if="Array.isArray(usuarios) && usuarios.length === 0" class="empty-list">
-          <div class="icon">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-          </div>
-          <h4>Sin usuarios registrados</h4>
-          <p>Aún no se han creado usuarios en la plataforma.</p>
-        </div>
+          <EmptyState
+            v-else-if="Array.isArray(usuarios) && usuarios.length === 0"
+            title="Sin usuarios registrados"
+            message="Aún no se han creado usuarios en la plataforma."
+          />
 
-        <div v-else class="detail-card">
-          <div class="detail-row">
-            <span class="k">Detalle</span>
-            <span class="v">Usuario creado correctamente.</span>
+          <div v-else class="detail-card">
+            <div class="detail-row">
+              <span class="k">Detalle</span>
+              <span class="v">Usuario creado correctamente.</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div v-else class="toast error">
-        <span class="toast-icon">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-        </span>
-        <div>
-          <strong>No se pudo completar la operación.</strong>
-          <div>{{ errorMessage }}</div>
-        </div>
-      </div>
+        <ErrorState
+          v-else
+          title="No se pudo completar la operación."
+          :message="errorMessage"
+          retry-label="Reintentar"
+          @retry="loadUsers"
+        />
+      </template>
     </section>
   </div>
 </template>
@@ -155,9 +160,13 @@ import { defineComponent, reactive, ref } from 'vue'
 import { userService } from '../../services/users'
 import { usePermissions } from '../../composables/usePermissions'
 import type { Usuario, UserRole } from '../../types'
+import LoadingState from '../../components/LoadingState.vue'
+import EmptyState from '../../components/EmptyState.vue'
+import ErrorState from '../../components/ErrorState.vue'
 
 export default defineComponent({
   name: 'DashboardUsuarios',
+  components: { LoadingState, EmptyState, ErrorState },
   setup() {
     const { puedeAccion } = usePermissions()
 
@@ -242,16 +251,15 @@ export default defineComponent({
     const loadUsers = async () => {
       isLoading.value = true
       mode.value = 'list'
+      showPanel.value = true
       try {
         const response: Usuario[] = await userService.list()
         resultKind.value = 'success'
         usuarios.value = Array.isArray(response) ? response : []
-        showPanel.value = true
       } catch (err: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(err)
         usuarios.value = []
-        showPanel.value = true
       } finally {
         isLoading.value = false
         mode.value = null
