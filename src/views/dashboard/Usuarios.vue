@@ -7,12 +7,12 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6" /><path d="M22 11h-6" /></svg>
           </div>
           <div class="form-card-title">
-            <h3>Crear usuario</h3>
-            <span>Registra un nuevo usuario con su rol y credenciales</span>
+            <h3>{{ isEditing ? 'Editar usuario' : 'Crear usuario' }}</h3>
+            <span>{{ isEditing ? 'Edita los datos y configuración del usuario' : 'Registra un nuevo usuario con su rol y credenciales' }}</span>
           </div>
         </div>
 
-        <form @submit.prevent="createUser">
+        <form @submit.prevent="submitForm">
           <div class="form-grid">
             <div class="form-field full" :class="{ error: fieldErrors.nombre_completo }">
               <label class="req">Nombre completo</label>
@@ -20,13 +20,14 @@
               <span v-if="fieldErrors.nombre_completo" class="error-text">{{ fieldErrors.nombre_completo }}</span>
             </div>
             <div class="form-field" :class="{ error: fieldErrors.correo }">
-              <label class="req">Correo electrónico</label>
-              <input v-model="form.correo" class="input" type="email" placeholder="usuario@correo.com" />
+              <label :class="{ req: !isEditing }">Correo electrónico</label>
+              <input v-model="form.correo" class="input" type="email" placeholder="usuario@correo.com" :disabled="isEditing" />
               <span v-if="fieldErrors.correo" class="error-text">{{ fieldErrors.correo }}</span>
+              <span v-if="isEditing" class="helper text-xs">El correo no se puede modificar</span>
             </div>
             <div class="form-field" :class="{ error: fieldErrors.password }">
-              <label class="req">Contraseña</label>
-              <input v-model="form.password" class="input" type="password" placeholder="Mínimo 8 caracteres" />
+              <label :class="{ req: !isEditing }">Contraseña <span v-if="isEditing" class="font-normal opacity-50">(opcional)</span></label>
+              <input v-model="form.password" class="input" type="password" :placeholder="isEditing ? 'Deja en blanco para no cambiar' : 'Mínimo 8 caracteres'" />
               <span v-if="fieldErrors.password" class="error-text">{{ fieldErrors.password }}</span>
             </div>
             <div class="form-field full" :class="{ error: fieldErrors.rol }">
@@ -47,11 +48,12 @@
             <button type="submit" class="btn btn-primary" :disabled="isLoading">
               <span v-if="isLoading" class="spinner"></span>
               <span v-else class="btn-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6" /><path d="M22 11h-6" /></svg>
+                <svg v-if="!isEditing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6" /><path d="M22 11h-6" /></svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
               </span>
-              {{ isLoading ? 'Creando...' : 'Crear usuario' }}
+              {{ isLoading ? (isEditing ? 'Guardando...' : 'Creando...') : (isEditing ? 'Guardar cambios' : 'Crear usuario') }}
             </button>
-            <button type="button" class="btn btn-secondary" @click="resetForm">Limpiar</button>
+            <button type="button" class="btn btn-secondary" @click="resetForm">{{ isEditing ? 'Cancelar edición' : 'Limpiar' }}</button>
           </div>
         </form>
       </article>
@@ -117,6 +119,17 @@
             </div>
             <div class="item-actions">
               <span class="badge badge-default">ID {{ user.id_usuario }}</span>
+              <div v-if="puedeAccion('usuarios.actualizar')" class="actions-group">
+                <button class="btn btn-ghost btn-icon" @click="editUser(user)" title="Editar usuario">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button v-if="user.activo" class="btn btn-ghost btn-icon text-danger" @click="promptToggleStatus(user)" title="Desactivar usuario">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                </button>
+                <button v-else class="btn btn-ghost btn-icon text-success" @click="promptToggleStatus(user)" title="Activar usuario">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </button>
+              </div>
             </div>
           </li>
         </ul>
@@ -146,6 +159,19 @@
           <div>{{ errorMessage }}</div>
         </div>
       </div>
+
+      <!-- Componente para confirmación de cambio de estado -->
+      <ConfirmDialog
+        v-model:show="showStateConfirm"
+        :title="userToToggle?.activo ? 'Desactivar Usuario' : 'Activar Usuario'"
+        :message="userToToggle?.activo 
+          ? `¿Estás seguro de que deseas desactivar el usuario '${userToToggle?.nombre_completo}'?` 
+          : `¿Estás seguro de que deseas activar el usuario '${userToToggle?.nombre_completo}'?`"
+        :type="userToToggle?.activo ? 'danger' : 'primary'"
+        :confirmText="userToToggle?.activo ? 'Sí, desactivar' : 'Sí, activar'"
+        :loading="isTogglingState"
+        @confirm="toggleUserStatus"
+      />
     </section>
   </div>
 </template>
@@ -155,9 +181,11 @@ import { defineComponent, reactive, ref } from 'vue'
 import { userService } from '../../services/users'
 import { usePermissions } from '../../composables/usePermissions'
 import type { Usuario, UserRole } from '../../types'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
 
 export default defineComponent({
   name: 'DashboardUsuarios',
+  components: { ConfirmDialog },
   setup() {
     const { puedeAccion } = usePermissions()
 
@@ -170,23 +198,37 @@ export default defineComponent({
     const fieldErrors = reactive<Record<string, string>>({})
 
     const isLoading = ref(false)
-    const mode = ref<'create' | 'list' | null>(null)
+    const mode = ref<'create' | 'list' | 'edit' | null>(null)
     const showPanel = ref(false)
     const resultKind = ref<'success' | 'error'>('success')
     const usuarios = ref<Usuario[]>([])
     const errorMessage = ref('')
+    
+    // Edición de usuario
+    const isEditing = ref(false)
+    const editingUserId = ref<number | null>(null)
+
+    // Activación/Desactivación de usuario
+    const showStateConfirm = ref(false)
+    const isTogglingState = ref(false)
+    const userToToggle = ref<Usuario | null>(null)
 
     const validate = (): boolean => {
       Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
       if (!form.nombre_completo.trim()) fieldErrors.nombre_completo = 'Ingresa el nombre completo'
-      if (!form.correo.trim()) {
-        fieldErrors.correo = 'Ingresa un correo'
-      } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.correo)) {
-        fieldErrors.correo = 'El formato del correo no es válido'
+      
+      // Solo validamos correo en creación (en edición está deshabilitado)
+      if (!isEditing.value) {
+        if (!form.correo.trim()) {
+          fieldErrors.correo = 'Ingresa un correo'
+        } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.correo)) {
+          fieldErrors.correo = 'El formato del correo no es válido'
+        }
       }
-      if (!form.password) {
+      
+      if (!isEditing.value && !form.password) {
         fieldErrors.password = 'Ingresa una contraseña'
-      } else if (form.password.length < 8) {
+      } else if (form.password && form.password.length < 8) {
         fieldErrors.password = 'Debe tener mínimo 8 caracteres'
       }
       if (!form.rol) fieldErrors.rol = 'Selecciona un rol'
@@ -205,6 +247,9 @@ export default defineComponent({
       form.password = ''
       form.rol = 'REGISTRADOR_DONACIONES'
       Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
+      
+      isEditing.value = false
+      editingUserId.value = null
     }
 
     const extractError = (err: any): string => {
@@ -212,6 +257,14 @@ export default defineComponent({
       if (typeof detail === 'string') return detail
       if (Array.isArray(detail)) return detail.map((d: any) => d.msg).join(', ')
       return err?.message || 'Error desconocido'
+    }
+
+    const submitForm = async () => {
+      if (isEditing.value) {
+        await updateUser()
+      } else {
+        await createUser()
+      }
     }
 
     const createUser = async () => {
@@ -236,6 +289,80 @@ export default defineComponent({
       } finally {
         isLoading.value = false
         mode.value = null
+      }
+    }
+
+    const editUser = (user: Usuario) => {
+      isEditing.value = true
+      editingUserId.value = user.id_usuario
+      form.nombre_completo = user.nombre_completo
+      form.correo = user.correo
+      form.rol = user.rol
+      form.password = ''
+      Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
+      
+      // Scroll smoothly to form
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    const updateUser = async () => {
+      if (!validate() || !editingUserId.value) return
+      isLoading.value = true
+      mode.value = 'edit'
+      try {
+        const updateData: any = {
+          nombre_completo: form.nombre_completo.trim(),
+          rol: form.rol
+        }
+        // Only valid to send password if it was actually changed
+        if (form.password) {
+          updateData.password = form.password
+        }
+        
+        await userService.update(editingUserId.value, updateData)
+        
+        // Refresh the list to show updated data
+        await loadUsers()
+        resetForm()
+      } catch (err: any) {
+        showPanel.value = true
+        resultKind.value = 'error'
+        errorMessage.value = extractError(err)
+      } finally {
+        isLoading.value = false
+        mode.value = null
+      }
+    }
+
+    const promptToggleStatus = (user: Usuario) => {
+      userToToggle.value = user
+      showStateConfirm.value = true
+    }
+
+    const toggleUserStatus = async () => {
+      if (!userToToggle.value) return
+      
+      isTogglingState.value = true
+      try {
+        if (userToToggle.value.activo) {
+          await userService.deactivate(userToToggle.value.id_usuario)
+        } else {
+          await userService.activate(userToToggle.value.id_usuario)
+        }
+        
+        // Cierra dialogo de confirmación antes de la actualización
+        showStateConfirm.value = false
+        
+        // Refresca la lista
+        await loadUsers()
+      } catch (err: any) {
+        showStateConfirm.value = false
+        showPanel.value = true
+        resultKind.value = 'error'
+        errorMessage.value = extractError(err)
+      } finally {
+        isTogglingState.value = false
+        userToToggle.value = null
       }
     }
 
@@ -299,8 +426,10 @@ export default defineComponent({
 
     return {
       form, fieldErrors, isLoading, mode, showPanel, resultKind,
-      usuarios, errorMessage,
-      createUser, loadUsers, resetForm, closeResult,
+      usuarios, errorMessage, isEditing,
+      showStateConfirm, isTogglingState, userToToggle,
+      submitForm, createUser, loadUsers, resetForm, closeResult,
+      editUser, promptToggleStatus, toggleUserStatus,
       getInitials, avatarVariant, roleBadgeClass, formatDateTime, puedeAccion
     }
   }

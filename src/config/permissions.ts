@@ -7,6 +7,7 @@ export type Rol = 'ADMIN' | 'CENSADOR' | 'OPERADOR_ENTREGAS' | 'COORDINADOR_LOGI
 export type Accion =
   | 'usuarios.crear'
   | 'usuarios.listar'
+  | 'usuarios.actualizar'
   | 'familias.crear'
   | 'familias.listar'
   | 'personas.crear'
@@ -17,7 +18,7 @@ export type Accion =
 
 export const ACCIONES_POR_ROL: Record<Rol, Accion[]> = {
   ADMIN: [
-    'usuarios.crear', 'usuarios.listar',
+    'usuarios.crear', 'usuarios.listar', 'usuarios.actualizar',
     'familias.crear', 'familias.listar',
     'personas.crear',
     'ubicaciones.crear',
@@ -56,7 +57,7 @@ export interface ModuloConfig {
 }
 
 export const MODULOS: ModuloConfig[] = [
-  { key: 'usuarios', to: '/dashboard/usuarios', label: 'Usuarios', acciones: ['usuarios.crear', 'usuarios.listar'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
+  { key: 'usuarios', to: '/dashboard/usuarios', label: 'Usuarios', acciones: ['usuarios.crear', 'usuarios.listar', 'usuarios.actualizar'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
   { key: 'familias', to: '/dashboard/familias', label: 'Familias', acciones: ['familias.crear', 'familias.listar'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
   { key: 'personas', to: '/dashboard/personas', label: 'Personas', acciones: ['personas.crear'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
   { key: 'ubicaciones', to: '/dashboard/ubicaciones', label: 'Ubicaciones', acciones: ['ubicaciones.crear'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' },
@@ -94,6 +95,7 @@ export const ROL_LABELS: Record<Rol, string> = {
 export const ACCION_LABELS: Record<Accion, string> = {
   'usuarios.crear': 'Crear usuario',
   'usuarios.listar': 'Listar usuarios',
+  'usuarios.actualizar': 'Actualizar usuario',
   'familias.crear': 'Registrar familia',
   'familias.listar': 'Consultar familias',
   'personas.crear': 'Registrar persona',
