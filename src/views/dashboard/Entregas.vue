@@ -258,11 +258,11 @@ export default defineComponent({
       isLoadingPickers.value = true
       try {
         const [famRes, bodRes, recRes] = await Promise.all([
-          familiaService.list(),
+          familiaService.list(1, 100),
           bodegaService.list(),
           recursoService.list()
         ])
-        familias.value = Array.isArray(famRes) ? famRes : []
+        familias.value = famRes.items
         bodegas.value = Array.isArray(bodRes) ? bodRes : []
         recursos.value = Array.isArray(recRes) ? recRes : []
       } catch {

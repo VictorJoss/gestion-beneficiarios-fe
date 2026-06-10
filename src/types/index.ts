@@ -325,3 +325,11 @@ export interface IndicadoresPanelResponse {
 export interface ApiErrorResponse {
   detail?: string | { loc: string[]; msg: string; type: string }[]
 }
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
