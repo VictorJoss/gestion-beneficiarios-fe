@@ -43,6 +43,16 @@ const routes = [
         path: 'donantes',
         name: 'DashboardDonantes',
         component: () => import('../views/dashboard/Donantes.vue')
+      },
+      {
+        path: 'sandbox',
+        name: 'DashboardSandbox',
+        component: () => import('../views/dashboard/EstadosSandbox.vue')
+      },
+      {
+        path: 'reportes',
+        name: 'DashboardReportes',
+        component: () => import('../views/dashboard/Reportes.vue')
       }
     ]
   }
