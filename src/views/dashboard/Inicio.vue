@@ -71,6 +71,12 @@
     <div v-else-if="loading" class="loading-state">
       <div class="skeleton-line w-100" style="height: 100px;"></div>
     </div>
+    <div v-else-if="error" class="toast error">
+      <div>
+        <strong>Error cargando indicadores</strong>
+        <div>{{ error }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -97,13 +103,15 @@ export default defineComponent({
 
     const indicadores = ref<IndicadoresPanelResponse | null>(null)
     const loading = ref(false)
+    const error = ref('')
 
     onMounted(async () => {
       loading.value = true
+      error.value = ''
       try {
         indicadores.value = await indicadoresService.obtenerPanel()
-      } catch (e) {
-        console.error("Error cargando indicadores", e)
+      } catch {
+        error.value = 'No se pudo cargar el resumen de indicadores.'
       } finally {
         loading.value = false
       }
@@ -135,7 +143,7 @@ export default defineComponent({
       })
     })
 
-    return { usuario, token, firstName, rolLabel, shortcuts, indicadores, loading }
+    return { usuario, token, firstName, rolLabel, shortcuts, indicadores, loading, error }
   }
 })
 </script>
