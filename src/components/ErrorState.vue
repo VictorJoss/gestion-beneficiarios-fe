@@ -50,7 +50,6 @@ export default defineComponent({
   border: 1px solid #fecdca;
   border-radius: 14px;
   color: #b42318;
-  margin: 0 4px;
 }
 
 .toast-icon {
