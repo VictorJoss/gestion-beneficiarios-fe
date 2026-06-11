@@ -78,6 +78,11 @@ const routes = [
         path: 'focos-sanitarios',
         name: 'DashboardFocosSanitarios',
         component: () => import('../views/dashboard/FocosSanitarios.vue')
+      },
+      {
+        path: 'audit-logs',
+        name: 'DashboardAuditLogs',
+        component: () => import('../views/dashboard/AuditLogs.vue')
       }
     ] 
   }
