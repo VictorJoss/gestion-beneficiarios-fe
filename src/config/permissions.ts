@@ -23,6 +23,9 @@ export type Accion =
   | 'planes.generar'
   | 'configuracion_puntaje.ver'
   | 'configuracion_puntaje.editar'
+  | 'focos.crear'
+  | 'focos.listar'
+  | 'focos.actualizar'
   | 'audit_logs.ver'
 
 export const ACCIONES_POR_ROL: Record<Rol, Accion[]> = {
@@ -38,11 +41,13 @@ export const ACCIONES_POR_ROL: Record<Rol, Accion[]> = {
     'reportes.ver',
     'planes.listar', 'planes.generar',
     'configuracion_puntaje.ver', 'configuracion_puntaje.editar',
+    'focos.crear', 'focos.listar', 'focos.actualizar',
     'audit_logs.ver'
   ],
   CENSADOR: [
     'familias.crear', 'familias.listar',
-    'personas.crear'
+    'personas.crear',
+    'focos.crear', 'focos.listar'
   ],
   OPERADOR_ENTREGAS: [
     'familias.listar',
@@ -58,7 +63,8 @@ export const ACCIONES_POR_ROL: Record<Rol, Accion[]> = {
   FUNCIONARIO_CONTROL: [
     'familias.listar',
     'entregas.listar',
-    'reportes.ver'
+    'reportes.ver',
+    'focos.listar', 'focos.actualizar'
   ],
   REGISTRADOR_DONACIONES: [
     'recursos.crear',
@@ -66,7 +72,7 @@ export const ACCIONES_POR_ROL: Record<Rol, Accion[]> = {
   ]
 }
 
-export type Modulo = 'usuarios' | 'familias' | 'personas' | 'ubicaciones' | 'recursos' | 'donantes' | 'traslados' | 'entregas' | 'reportes' | 'planes' | 'configuracion_puntaje' | 'audit_logs'
+export type Modulo = 'usuarios' | 'familias' | 'personas' | 'ubicaciones' | 'recursos' | 'donantes' | 'traslados' | 'entregas' | 'reportes' | 'planes' | 'configuracion_puntaje' | 'focos' | 'audit_logs'
 
 export interface ModuloConfig {
   key: Modulo
@@ -88,6 +94,7 @@ export const MODULOS: ModuloConfig[] = [
   { key: 'reportes', to: '/dashboard/reportes', label: 'Reportes', acciones: ['reportes.ver'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
   { key: 'planes', to: '/dashboard/planes-distribucion', label: 'Planes', acciones: ['planes.listar', 'planes.generar'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="15" x2="8" y2="15"/><line x1="16" y1="11" x2="8" y2="11"/><path d="M10 19h4"/></svg>' },
   { key: 'configuracion_puntaje', to: '/dashboard/configuracion-puntaje', label: 'Config. Puntaje', acciones: [ 'configuracion_puntaje.ver', 'configuracion_puntaje.editar' ], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H7"/></svg>' },
+  { key: 'focos', to: '/dashboard/focos-sanitarios', label: 'Focos Sanitarios', acciones: ['focos.crear', 'focos.listar', 'focos.actualizar'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' },
   { key: 'audit_logs', to: '/dashboard/audit-logs', label: 'Auditoría', acciones: ['audit_logs.ver'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
 ]
 
@@ -137,5 +144,8 @@ export const ACCION_LABELS: Record<Accion, string> = {
   'planes.generar': 'Generar plan',
   'configuracion_puntaje.ver': 'Ver configuración de puntaje',
   'configuracion_puntaje.editar': 'Editar configuración de puntaje',
+  'focos.crear': 'Registrar foco sanitario',
+  'focos.listar': 'Consultar focos sanitarios',
+  'focos.actualizar': 'Actualizar foco sanitario',
   'audit_logs.ver': 'Ver registros de auditoría'
 }
