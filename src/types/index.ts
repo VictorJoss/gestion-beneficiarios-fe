@@ -349,6 +349,26 @@ export interface ConfiguracionPuntajeUpdate {
   valor: number
 }
 
+// Audit Log Types
+export interface AuditLog {
+  id_audit_log: number
+  username: string | null
+  method: string
+  endpoint: string
+  action: string
+  status_code: number
+  ip_address: string | null
+  payload: Record<string, any> | null
+  created_at: string
+}
+
+export interface AuditLogFilters {
+  method?: string
+  status_code?: number
+  limit?: number
+  offset?: number
+}
+
 // API Response Types
 export interface ApiErrorResponse {
   detail?: string | { loc: string[]; msg: string; type: string }[]

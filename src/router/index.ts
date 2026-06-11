@@ -70,11 +70,16 @@ const routes = [
         component: () => import('../views/dashboard/PlanesDistribucion.vue')
       },
       
-      {
-       path: 'configuracion-puntaje',
-       name: 'DashboardConfiguracionPuntaje',
-       component: () => import('../views/dashboard/ConfiguracionPuntaje.vue')
-      }
+       {
+        path: 'configuracion-puntaje',
+        name: 'DashboardConfiguracionPuntaje',
+        component: () => import('../views/dashboard/ConfiguracionPuntaje.vue')
+       },
+       {
+        path: 'audit-logs',
+        name: 'DashboardAuditLogs',
+        component: () => import('../views/dashboard/AuditLogs.vue')
+       }
 
     ] 
   }
