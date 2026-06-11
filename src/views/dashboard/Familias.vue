@@ -87,8 +87,40 @@
                 </div>
               </div>
               <div class="item-actions">
-                <span class="badge badge-default">ID {{ familia.id_familia }}</span>
-              </div>
+  <button class="btn btn-secondary" type="button" @click="toggleDetalleFamilia(familia.id_familia)">
+    {{ familiaExpandida === familia.id_familia ? 'Ocultar detalle' : 'Ver detalle' }}
+  </button>
+
+  <button
+    class="btn btn-primary"
+    type="button"
+    :disabled="calculandoPuntaje === familia.id_familia"
+    @click="calcularPuntajeFamilia(familia.id_familia)"
+  >
+    {{ calculandoPuntaje === familia.id_familia ? 'Calculando...' : 'Calcular puntaje' }}
+  </button>
+
+  <span class="badge badge-default">ID {{ familia.id_familia }}</span>
+</div>
+
+<div v-if="familiaExpandida === familia.id_familia" class="family-detail-card">
+  <div class="detail-row">
+    <span class="k">Código</span>
+    <span class="v">{{ familia.codigo_familia || 'Sin código' }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="k">Fecha de registro</span>
+    <span class="v">{{ formatDate(familia.fecha_registro) }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="k">Zona</span>
+    <span class="v">{{ familia.id_zona ? 'Zona #' + familia.id_zona : 'Sin zona asignada' }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="k">Puntaje prioridad</span>
+    <span class="v">{{ familia.puntaje_prioridad ?? 'Pendiente por calcular' }}</span>
+  </div>
+</div>
             </li>
           </ul>
 
@@ -155,6 +187,8 @@ export default defineComponent({
     const zonas = ref<Zona[]>([])
     const isListLoading = ref(false)
     const errorMessage = ref('')
+    const familiaExpandida = ref<number | null>(null)
+    const calculandoPuntaje = ref<number | null>(null)
 
     const currentPage = ref(1)
     const pageSize = ref(6)
@@ -195,6 +229,34 @@ export default defineComponent({
         await loadFamilies()
       }
     })
+
+
+const toggleDetalleFamilia = (familiaId: number) => {
+  familiaExpandida.value = familiaExpandida.value === familiaId ? null : familiaId
+}
+
+const calcularPuntajeFamilia = async (familiaId: number) => {
+  calculandoPuntaje.value = familiaId
+  try {
+    const response = await familiaService.calcularPuntaje(familiaId)
+
+    familias.value = familias.value.map(familia =>
+      familia.id_familia === familiaId
+        ? {
+            ...familia,
+            puntaje_prioridad: response.puntaje_prioridad ?? response.puntaje ?? familia.puntaje_prioridad
+          }
+        : familia
+    )
+  } catch (err: any) {
+    resultKind.value = 'error'
+    errorMessage.value = extractError(err)
+    showPanel.value = true
+  } finally {
+    calculandoPuntaje.value = null
+  }
+}
+
 
     const validate = (): boolean => {
       Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
@@ -258,8 +320,77 @@ export default defineComponent({
       familias, zonas, isListLoading, errorMessage,
       currentPage, pageSize, totalItems,
       createFamily, loadFamilies, onPageChange, resetForm, closeResult,
-      formatDate, puedeAccion
+      formatDate, puedeAccion, familiaExpandida, calculandoPuntaje, toggleDetalleFamilia, calcularPuntajeFamilia,
     }
   }
 })
 </script>
+<style scoped>
+.item-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  min-width: 150px;
+}
+
+.item-actions .btn {
+  justify-content: center;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.family-detail-card {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid #dbe7ff;
+  border-radius: 14px;
+  background: #f8fbff;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.family-detail-card .detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.family-detail-card .k {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.family-detail-card .v {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+@media (max-width: 760px) {
+  .item-card {
+    grid-template-columns: auto 1fr;
+  }
+
+  .item-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .item-actions .btn {
+    width: auto;
+  }
+}
+</style>
