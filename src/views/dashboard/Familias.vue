@@ -68,11 +68,27 @@
         </div>
 
         <div v-if="resultKind === 'success'">
-          <ul v-if="Array.isArray(familias) && familias.length" class="item-list">
-            <li v-for="familia in familias" :key="familia.id_familia" class="item-card">
+          <div 
+            v-if="Array.isArray(familias) && familias.length"
+            class="form-field"
+            style="margin-bottom: 1rem;"
+            >
+            <label>Buscar Familia</label>
+            <input
+              v-model="searchFamilia"
+              class="input"
+              placeholder="Buscar por codigo, ID o zona"
+              />
+          </div>
+          <ul v-if="Array.isArray(familiasFiltradas) && familiasFiltradas.length" class="item-list">
+           <li
+              v-for="familia in familiasFiltradas"
+              :key="familia.id_familia"
+              class="item-card"
+            >
               <div class="item-avatar variant-green">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              </div>
+              </div>    
               <div class="item-content">
                 <h4>{{ familia.codigo_familia || 'Familia #' + familia.id_familia }}</h4>
                 <p>Registrada el {{ formatDate(familia.fecha_registro) }}</p>
@@ -123,7 +139,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, ref, onMounted } from 'vue'
+import { defineComponent, reactive, ref, onMounted, computed } from 'vue'
 import { familiaService } from '../../services/familia'
 import { zonaService } from '../../services/ubicaciones'
 import { usePermissions } from '../../composables/usePermissions'
@@ -140,9 +156,21 @@ export default defineComponent({
     const showPanel = ref(false)
     const resultKind = ref<'success' | 'error'>('success')
     const familias = ref<Familia[]>([])
+    const searchFamilia = ref('')
     const zonas = ref<Zona[]>([])
     const isListLoading = ref(false)
     const errorMessage = ref('')
+    const familiasFiltradas = computed(() => {
+    const q = searchFamilia.value.toLowerCase().trim()
+
+      if (!q) return familias.value
+
+      return familias.value.filter(familia =>
+        String(familia.id_familia).includes(q) ||
+        (familia.codigo_familia || '').toLowerCase().includes(q) ||
+        String(familia.id_zona || '').includes(q)
+      )
+    })
 
     onMounted(async () => {
       try {
@@ -245,11 +273,25 @@ export default defineComponent({
     }
 
     return {
-      form, fieldErrors, isLoading, mode, showPanel, resultKind,
-      familias, zonas, isListLoading, errorMessage,
-      createFamily, loadFamilies, resetForm, closeResult,
-      formatDate, puedeAccion
-    }
+        form,
+        fieldErrors,
+        isLoading,
+        mode,
+        showPanel,
+        resultKind,
+        familias,
+        familiasFiltradas,
+        searchFamilia,
+        zonas,
+        isListLoading,
+        errorMessage,
+        createFamily,
+        loadFamilies,
+        resetForm,
+        closeResult,
+        formatDate,
+        puedeAccion
+      }
   }
 })
 </script>
