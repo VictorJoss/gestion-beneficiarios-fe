@@ -21,6 +21,8 @@ export type Accion =
   | 'reportes.ver'
   | 'planes.listar'
   | 'planes.generar'
+  | 'configuracion_puntaje.ver'
+  | 'configuracion_puntaje.editar'
 
 export const ACCIONES_POR_ROL: Record<Rol, Accion[]> = {
   ADMIN: [
@@ -33,7 +35,8 @@ export const ACCIONES_POR_ROL: Record<Rol, Accion[]> = {
     'traslados.crear',
     'entregas.registrar', 'entregas.listar',
     'reportes.ver',
-    'planes.listar', 'planes.generar'
+    'planes.listar', 'planes.generar',
+    'configuracion_puntaje.ver', 'configuracion_puntaje.editar'
   ],
   CENSADOR: [
     'familias.crear', 'familias.listar',
@@ -61,7 +64,7 @@ export const ACCIONES_POR_ROL: Record<Rol, Accion[]> = {
   ]
 }
 
-export type Modulo = 'usuarios' | 'familias' | 'personas' | 'ubicaciones' | 'recursos' | 'donantes' | 'traslados' | 'entregas' | 'reportes' | 'planes'
+export type Modulo = 'usuarios' | 'familias' | 'personas' | 'ubicaciones' | 'recursos' | 'donantes' | 'traslados' | 'entregas' | 'reportes' | 'planes' | 'configuracion_puntaje'
 
 export interface ModuloConfig {
   key: Modulo
@@ -81,7 +84,8 @@ export const MODULOS: ModuloConfig[] = [
   { key: 'traslados', to: '/dashboard/traslados-refugios', label: 'Traslados', acciones: ['traslados.crear'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' },
   { key: 'entregas', to: '/dashboard/entregas', label: 'Entregas', acciones: ['entregas.registrar', 'entregas.listar'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>' },
   { key: 'reportes', to: '/dashboard/reportes', label: 'Reportes', acciones: ['reportes.ver'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
-  { key: 'planes', to: '/dashboard/planes-distribucion', label: 'Planes', acciones: ['planes.listar', 'planes.generar'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="15" x2="8" y2="15"/><line x1="16" y1="11" x2="8" y2="11"/><path d="M10 19h4"/></svg>' }
+  { key: 'planes', to: '/dashboard/planes-distribucion', label: 'Planes', acciones: ['planes.listar', 'planes.generar'], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="15" x2="8" y2="15"/><line x1="16" y1="11" x2="8" y2="11"/><path d="M10 19h4"/></svg>' },
+  { key: 'configuracion_puntaje', to: '/dashboard/configuracion-puntaje', label: 'Config. Puntaje', acciones: [ 'configuracion_puntaje.ver', 'configuracion_puntaje.editar' ], icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H7"/></svg>' },
 ]
 
 export function puede(rol: string | null | undefined, accion: Accion): boolean {
@@ -127,5 +131,7 @@ export const ACCION_LABELS: Record<Accion, string> = {
   'entregas.listar': 'Consultar entregas',
   'reportes.ver': 'Ver reportes',
   'planes.listar': 'Listar planes',
-  'planes.generar': 'Generar plan'
+  'planes.generar': 'Generar plan',
+  'configuracion_puntaje.ver': 'Ver configuración de puntaje',
+  'configuracion_puntaje.editar': 'Editar configuración de puntaje'
 }

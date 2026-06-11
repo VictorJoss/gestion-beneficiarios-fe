@@ -68,8 +68,15 @@ const routes = [
         path: 'planes-distribucion',
         name: 'DashboardPlanesDistribucion',
         component: () => import('../views/dashboard/PlanesDistribucion.vue')
+      },
+      
+      {
+       path: 'configuracion-puntaje',
+       name: 'DashboardConfiguracionPuntaje',
+       component: () => import('../views/dashboard/ConfiguracionPuntaje.vue')
       }
-    ]
+
+    ] 
   }
 ]
 
