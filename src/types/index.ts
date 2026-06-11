@@ -338,6 +338,17 @@ export interface GenerarPlanResponse {
   total_familias: number
 }
 
+export interface ConfiguracionPuntaje {
+  id_config: number
+  clave: string
+  valor: number
+  descripcion: string
+}
+
+export interface ConfiguracionPuntajeUpdate {
+  valor: number
+}
+
 // API Response Types
 export interface ApiErrorResponse {
   detail?: string | { loc: string[]; msg: string; type: string }[]
