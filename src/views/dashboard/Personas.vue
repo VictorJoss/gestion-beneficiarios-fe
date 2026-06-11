@@ -102,8 +102,21 @@
         </div>
 
         <div v-if="resultKind === 'success'">
-          <ul v-if="Array.isArray(personas) && personas.length" class="item-list">
-            <li v-for="persona in personas" :key="persona.id_persona" class="item-card">
+          <div
+            v-if="Array.isArray(personas) && personas.length"
+            class="form-field"
+            style="margin-bottom: 1rem;"
+            >
+            <label>Buscar persona</label>
+
+            <input
+              v-model="searchPersona"
+              class="input"
+              placeholder="Nombre o documento"
+            />
+          </div>
+          <ul v-if="Array.isArray(personasFiltradas) && personasFiltradas.length" class="item-list">
+            <li v-for="persona in personasFiltradas" :key="persona.id_persona" class="item-card">
               <div class="item-avatar variant-violet">
                 {{ getInitials(persona.nombre) }}
               </div>
@@ -172,7 +185,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, ref, onMounted } from 'vue'
+import { defineComponent, reactive, ref, onMounted, computed } from 'vue'
 import { familiaService, personaService } from '../../services/familia'
 import Pagination from '../../components/Pagination.vue'
 import type { Persona, Familia, PaginatedResponse } from '../../types'
@@ -183,6 +196,18 @@ export default defineComponent({
   setup() {
     const familias = ref<Familia[]>([])
     const personas = ref<Persona[]>([])
+    const searchPersona = ref('')
+    const personasFiltradas = computed(() => {
+    const q = searchPersona.value.toLowerCase().trim()
+
+      if (!q) return personas.value
+
+      return personas.value.filter(persona =>
+        persona.nombre.toLowerCase().includes(q) ||
+        (persona.numero_documento || '').toLowerCase().includes(q)
+      )
+    })
+
     const editando = ref(false)
     const personaEditandoId = ref<number | null>(null)
     const personaAEliminar = ref<Persona | null>(null)
@@ -385,7 +410,7 @@ export default defineComponent({
       currentPage, pageSize, totalItems,
       createPerson, guardarEdicion, iniciarEdicion, cancelarEdicion,
       solicitarEliminar, confirmarEliminar,
-      reset, closeResult, getInitials, hasAnyFlag, onPageChange
+      reset, closeResult, getInitials, hasAnyFlag, searchPersona, personasFiltradas, onPageChange
     }
   }
 })

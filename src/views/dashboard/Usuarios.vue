@@ -105,8 +105,21 @@
 
       <template v-else>
         <div v-if="resultKind === 'success'">
-          <ul v-if="Array.isArray(usuarios) && usuarios.length" class="item-list">
-            <li v-for="user in usuarios" :key="user.id_usuario" class="item-card">
+          <div
+            v-if="Array.isArray(usuarios) && usuarios.length"
+            class="form-field"
+            style="margin-bottom: 1rem;"
+          >
+            <label>Buscar usuario</label>
+
+            <input
+              v-model="searchUsuario"
+              class="input"
+              placeholder="Nombre o correo"
+            />
+          </div>
+          <ul v-if="Array.isArray(usuariosFiltrados) && usuariosFiltrados.length" class="item-list">
+            <li v-for="user in usuariosFiltrados" :key="user.id_usuario" class="item-card">
               <div class="item-avatar" :class="avatarVariant(user.rol)">
                 {{ getInitials(user.nombre_completo) }}
               </div>
@@ -191,7 +204,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, ref, onMounted } from 'vue'
+import { defineComponent, reactive, ref, computed, onMounted } from 'vue'
 import { userService } from '../../services/users'
 import { usePermissions } from '../../composables/usePermissions'
 import type { Usuario, UserRole, PaginatedResponse } from '../../types'
@@ -220,6 +233,18 @@ export default defineComponent({
     const showPanel = ref(false)
     const resultKind = ref<'success' | 'error'>('success')
     const usuarios = ref<Usuario[]>([])
+    const searchUsuario = ref('')
+    const usuariosFiltrados = computed(() => {
+    const q = searchUsuario.value.toLowerCase().trim()
+
+      if (!q) return usuarios.value
+
+      return usuarios.value.filter(user =>
+        user.nombre_completo.toLowerCase().includes(q) ||
+        user.correo.toLowerCase().includes(q)
+      )
+    })
+
     const errorMessage = ref('')
     
     // Edición de usuario
@@ -465,7 +490,7 @@ export default defineComponent({
       currentPage, pageSize, totalItems,
       submitForm, createUser, loadUsers, onPageChange, resetForm, closeResult,
       editUser, promptToggleStatus, toggleUserStatus,
-      getInitials, avatarVariant, roleBadgeClass, formatDateTime, puedeAccion
+      getInitials, avatarVariant, roleBadgeClass, formatDateTime, puedeAccion, searchUsuario, usuariosFiltrados
     }
   }
 })
