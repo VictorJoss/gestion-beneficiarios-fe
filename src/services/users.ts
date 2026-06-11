@@ -1,10 +1,16 @@
 import api from './api'
-import type { Usuario, UserRole } from '../types'
+import type { Usuario, UserRole, PaginatedResponse } from '../types'
 
 export class UserService {
-  async list(skip: number = 0, limit: number = 100): Promise<Usuario[]> {
-    const response = await api.get<Usuario[]>('/users/', { params: { skip, limit } })
-    return response.data
+  async list(page: number = 1, pageSize: number = 10): Promise<PaginatedResponse<Usuario>> {
+    const response = await api.get<any>('/users/', { params: { page, page_size: pageSize } })
+    const data = response.data
+    if (Array.isArray(data)) {
+      const start = (page - 1) * pageSize
+      const items = data.slice(start, start + pageSize)
+      return { items, total: data.length, page, page_size: pageSize, total_pages: Math.ceil(data.length / pageSize) }
+    }
+    return data as PaginatedResponse<Usuario>
   }
 
   async get(id: number): Promise<Usuario> {

@@ -321,7 +321,43 @@ export interface IndicadoresPanelResponse {
   recursos_disponibles: RecursoDisponible[]
 }
 
+// Planes de Distribución Types
+export type EstadoPlan = 'PROGRAMADO' | 'EN_PROCESO' | 'COMPLETADO' | 'ANULADO'
+
+export interface PlanDistribucion {
+  id_plan: number
+  fecha_generacion: string
+  estado: EstadoPlan
+  id_familia: number
+  puntaje_al_generar: number
+  prioridad_orden: number
+}
+
+export interface GenerarPlanResponse {
+  mensaje: string
+  total_familias: number
+}
+
+export interface ConfiguracionPuntaje {
+  id_config: number
+  clave: string
+  valor: number
+  descripcion: string
+}
+
+export interface ConfiguracionPuntajeUpdate {
+  valor: number
+}
+
 // API Response Types
 export interface ApiErrorResponse {
   detail?: string | { loc: string[]; msg: string; type: string }[]
+}
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
 }

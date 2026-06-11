@@ -1,11 +1,17 @@
 import api from './api'
-import type { Familia, FamiliaCreate, Persona, PersonaCreate } from '../types'
+import type { Familia, FamiliaCreate, Persona, PersonaCreate, PaginatedResponse } from '../types'
 
 // Familias
 export class FamiliaService {
-  async list(skip: number = 0, limit: number = 100): Promise<Familia[]> {
-    const response = await api.get<Familia[]>('/familias/', { params: { skip, limit } })
-    return response.data
+  async list(page: number = 1, pageSize: number = 10): Promise<PaginatedResponse<Familia>> {
+    const response = await api.get<any>('/familias/', { params: { page, page_size: pageSize } })
+    const data = response.data
+    if (Array.isArray(data)) {
+      const start = (page - 1) * pageSize
+      const items = data.slice(start, start + pageSize)
+      return { items, total: data.length, page, page_size: pageSize, total_pages: Math.ceil(data.length / pageSize) }
+    }
+    return data as PaginatedResponse<Familia>
   }
 
   async listByZona(): Promise<Familia[]> {
@@ -31,9 +37,15 @@ export class FamiliaService {
 
 // Personas
 export class PersonaService {
-  async list(): Promise<Persona[]> {
-    const response = await api.get<Persona[]>('/personas/')
-    return response.data
+  async list(page: number = 1, pageSize: number = 10): Promise<PaginatedResponse<Persona>> {
+    const response = await api.get<any>('/personas/', { params: { page, page_size: pageSize } })
+    const data = response.data
+    if (Array.isArray(data)) {
+      const start = (page - 1) * pageSize
+      const items = data.slice(start, start + pageSize)
+      return { items, total: data.length, page, page_size: pageSize, total_pages: Math.ceil(data.length / pageSize) }
+    }
+    return data as PaginatedResponse<Persona>
   }
 
   async get(id: number): Promise<Persona> {

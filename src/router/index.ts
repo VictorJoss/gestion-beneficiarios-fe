@@ -40,6 +40,11 @@ const routes = [
         component: () => import('../views/dashboard/Recursos.vue')
       },
       {
+        path: 'traslados-refugios',
+        name: 'DashboardTrasladosRefugios',
+        component: () => import('../views/dashboard/TrasladosRefugios.vue')
+      },
+      {
         path: 'donantes',
         name: 'DashboardDonantes',
         component: () => import('../views/dashboard/Donantes.vue')
@@ -58,8 +63,20 @@ const routes = [
         path: 'reportes',
         name: 'DashboardReportes',
         component: () => import('../views/dashboard/Reportes.vue')
+      },
+      {
+        path: 'planes-distribucion',
+        name: 'DashboardPlanesDistribucion',
+        component: () => import('../views/dashboard/PlanesDistribucion.vue')
+      },
+      
+      {
+       path: 'configuracion-puntaje',
+       name: 'DashboardConfiguracionPuntaje',
+       component: () => import('../views/dashboard/ConfiguracionPuntaje.vue')
       }
-    ]
+
+    ] 
   }
 ]
 

@@ -1,474 +1,598 @@
 <template>
   <div class="dash-page">
-    <div class="cards-grid">
-      <article v-if="puedeAccion('entregas.registrar')" class="form-card">
-        <div class="form-card-head">
-          <div class="form-card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-          </div>
-          <div class="form-card-title">
-            <h3>Registrar entrega</h3>
-            <span>Registra una entrega individual con recursos, ubicación y firma del receptor</span>
-          </div>
-        </div>
-
-        <form @submit.prevent="submitEntrega">
-          <div class="form-grid">
-            <div class="form-field" :class="{ error: fieldErrors.id_familia }">
-              <label class="req">Familia beneficiaria</label>
-              <select v-model.number="form.id_familia" class="select" :disabled="isLoadingPickers">
-                <option :value="null">Selecciona una familia</option>
-                <option v-for="f in familias" :key="f.id_familia" :value="f.id_familia">
-                  {{ f.codigo_familia || ('Familia #' + f.id_familia) }}
-                </option>
-              </select>
-              <span v-if="fieldErrors.id_familia" class="error-text">{{ fieldErrors.id_familia }}</span>
-            </div>
-
-            <div class="form-field">
-              <label>Bodega de origen (opcional)</label>
-              <select v-model.number="form.id_bodega" class="select" :disabled="isLoadingPickers">
-                <option :value="null">Automática (según disponibilidad)</option>
-                <option v-for="b in bodegas" :key="b.id_bodega" :value="b.id_bodega">{{ b.nombre }}</option>
-              </select>
-              <span class="helper">Si no eliges bodega, el sistema asigna una con stock suficiente.</span>
-            </div>
-
-            <div class="form-field">
-              <label>Fecha efectiva</label>
-              <input v-model="form.fecha_efectiva" class="input" type="date" />
-            </div>
-
-            <div class="form-field full">
-              <label>Ubicación del punto de entrega</label>
-              <div class="coords-row">
-                <input
-                  v-model="form.coordenadas"
-                  class="input"
-                  placeholder="lat,long (ej. 7.8939,-72.5078)"
-                  readonly
-                />
-                <button
-                  type="button"
-                  class="btn btn-secondary"
-                  :disabled="isLocating"
-                  @click="obtenerUbicacion"
-                >
-                  <span v-if="isLocating" class="spinner"></span>
-                  <span v-else>{{ form.coordenadas ? 'Actualizar' : 'Obtener ubicación' }}</span>
-                </button>
-              </div>
-              <span v-if="geoError" class="error-text">{{ geoError }}</span>
-              <span v-else class="helper">Usa el GPS del dispositivo para registrar dónde se realizó la entrega.</span>
-            </div>
-
-            <div class="form-field full">
-              <label class="req">Recursos entregados</label>
-              <div class="detalles-list">
-                <div
-                  v-for="(linea, index) in form.detalles"
-                  :key="index"
-                  class="detalle-row"
-                  :class="{ error: fieldErrors[`detalle_${index}`] }"
-                >
-                  <select v-model.number="linea.id_recurso" class="select" :disabled="isLoadingPickers">
-                    <option :value="null">Selecciona recurso</option>
-                    <option v-for="r in recursosActivos" :key="r.id_recurso" :value="r.id_recurso">
-                      {{ r.nombre }} ({{ r.unidad_medida }})
-                    </option>
-                  </select>
-                  <input
-                    v-model.number="linea.cantidad"
-                    class="input detalle-cantidad"
-                    type="number"
-                    min="1"
-                    step="1"
-                    placeholder="Cant."
-                  />
-                  <button
-                    type="button"
-                    class="btn btn-ghost btn-icon"
-                    title="Quitar línea"
-                    :disabled="form.detalles.length === 1"
-                    @click="removeDetalle(index)"
-                  >
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
-                </div>
-              </div>
-              <span v-if="fieldErrors.detalles" class="error-text">{{ fieldErrors.detalles }}</span>
-              <button type="button" class="btn btn-secondary btn-add-line" @click="addDetalle">
-                + Agregar recurso
-              </button>
-            </div>
-
-            <div class="form-field full" :class="{ error: fieldErrors.firma_digital }">
-              <SignaturePad
-                v-model="form.firma_digital"
-                label="Firma del receptor"
-                helper="La firma se guarda como evidencia de recepción."
-              />
-              <span v-if="fieldErrors.firma_digital" class="error-text">{{ fieldErrors.firma_digital }}</span>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
-              <span v-if="isSubmitting" class="spinner"></span>
-              <span v-else class="btn-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              </span>
-              {{ isSubmitting ? 'Registrando...' : 'Confirmar entrega' }}
-            </button>
-            <button type="button" class="btn btn-secondary" :disabled="isSubmitting" @click="resetForm">
-              Limpiar
-            </button>
-          </div>
-        </form>
-      </article>
-
-      <article v-else class="form-card">
-        <div class="form-card-title">
-          <h3>Sin permisos</h3>
-          <span>Tu rol no puede registrar entregas en el sistema.</span>
-        </div>
-      </article>
-    </div>
-
-    <section v-if="showPanel" class="result-panel">
+    <!-- Filtros y cabecera -->
+    <section class="result-panel">
       <div class="result-head">
         <div class="result-head-info">
-          <span class="label">Resultado del registro</span>
+          <span class="label">Entregas registradas</span>
+          <span v-if="!isLoading" class="count">
+            <strong>{{ total }}</strong>
+            {{ total === 1 ? "entrega" : "entregas" }}
+          </span>
         </div>
-        <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
+        <button class="btn btn-ghost" @click="cargarEntregas">
+          <svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+          </svg>
+          Actualizar
+        </button>
       </div>
 
-      <LoadingState v-if="isSubmitting" variant="skeleton" :count="2" label="Registrando entrega..." />
+      <!-- Filtros -->
+      <div class="filtros-row">
+        <select
+          v-model="filtroEstado"
+          class="select filtro-select"
+          @change="cargarEntregas"
+        >
+          <option value="">Todos los estados</option>
+          <option value="PENDIENTE">Pendiente</option>
+          <option value="ENTREGADA">Entregada</option>
+          <option value="ANULADA">Anulada</option>
+        </select>
+        <input
+          v-model="filtroFamilia"
+          class="input filtro-input"
+          type="number"
+          min="1"
+          placeholder="Filtrar por ID familia"
+          @change="cargarEntregas"
+        />
+      </div>
 
-      <template v-else>
-        <div v-if="resultKind === 'success' && entregaCreada" class="detail-card">
-          <div class="detail-row">
-            <span class="k">Código</span>
-            <span class="v"><span class="badge badge-success">{{ entregaCreada.codigo || '—' }}</span></span>
-          </div>
-          <div class="detail-row">
-            <span class="k">Estado</span>
-            <span class="v"><span class="badge" :class="estadoBadge(entregaCreada.estado)">{{ entregaCreada.estado }}</span></span>
-          </div>
-          <div class="detail-row">
-            <span class="k">Familia</span>
-            <span class="v">#{{ entregaCreada.id_familia }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="k">Bodega</span>
-            <span class="v">{{ entregaCreada.id_bodega ? '#' + entregaCreada.id_bodega : 'Asignada automáticamente' }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="k">Fecha efectiva</span>
-            <span class="v">{{ entregaCreada.fecha_efectiva || '—' }}</span>
-          </div>
-          <div v-if="entregaCreada.coordenadas" class="detail-row">
-            <span class="k">Coordenadas</span>
-            <span class="v">{{ entregaCreada.coordenadas }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="k">Recursos</span>
-            <span class="v">
-              <ul class="detalle-result-list">
-                <li v-for="d in entregaCreada.detalles" :key="d.id_detalle">
-                  {{ d.nombre_recurso || ('Recurso #' + d.id_recurso) }} — {{ d.cantidad }}
-                </li>
-              </ul>
-            </span>
+      <!-- Skeleton -->
+      <div v-if="isLoading" class="item-list">
+        <div v-for="n in 5" :key="n" class="skeleton-item">
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line w-60"></div>
+            <div class="skeleton-line w-40"></div>
+            <div class="skeleton-line w-80"></div>
           </div>
         </div>
+      </div>
 
-        <ErrorState
-          v-else
-          title="No se pudo registrar la entrega"
-          :message="errorMessage"
-          retry-label="Reintentar"
-          @retry="submitEntrega"
-        />
-      </template>
+      <!-- Error -->
+      <div v-else-if="errorMessage" class="toast error">
+        <span class="toast-icon">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </span>
+        <div>
+          <strong>Error al cargar entregas.</strong>
+          <div>{{ errorMessage }}</div>
+        </div>
+      </div>
+
+      <!-- Lista -->
+      <ul v-else-if="entregas.length" class="item-list">
+        <li
+          v-for="entrega in entregas"
+          :key="entrega.id_entrega"
+          class="item-card entrega-card"
+          :class="{
+            'entrega-card--expanded': expandida === entrega.id_entrega,
+          }"
+        >
+          <!-- Cabecera del item -->
+          <div class="item-avatar" :class="avatarEstado(entrega.estado)">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M5 12h14" />
+              <path d="M12 5l7 7-7 7" />
+            </svg>
+          </div>
+
+          <div class="item-content">
+            <h4>
+              {{
+                entrega.codigo ||
+                "ENT-" + String(entrega.id_entrega).padStart(5, "0")
+              }}
+            </h4>
+            <p>
+              <span v-if="entrega.id_familia"
+                >Familia #{{ entrega.id_familia }}</span
+              >
+              <span v-if="entrega.fecha_efectiva">
+                &middot; {{ formatFecha(entrega.fecha_efectiva) }}</span
+              >
+            </p>
+            <div class="item-meta">
+              <span :class="['badge', badgeEstado(entrega.estado)]">{{
+                labelEstado(entrega.estado)
+              }}</span>
+              <span v-if="entrega.detalles?.length" class="badge badge-default"
+                >{{ entrega.detalles.length }}
+                {{
+                  entrega.detalles.length === 1 ? "recurso" : "recursos"
+                }}</span
+              >
+            </div>
+          </div>
+
+          <div class="item-actions">
+            <button
+              class="btn-expandir"
+              :class="{
+                'btn-expandir--active': expandida === entrega.id_entrega,
+              }"
+              :title="
+                expandida === entrega.id_entrega
+                  ? 'Cerrar detalle'
+                  : 'Ver detalle'
+              "
+              @click="toggleDetalle(entrega.id_entrega)"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Detalle expandible -->
+          <div v-if="expandida === entrega.id_entrega" class="entrega-detalle">
+            <div v-if="cargandoDetalle" class="detalle-loading">
+              <div class="spinner-sm"></div>
+              Cargando detalle...
+            </div>
+            <template v-else-if="detalleActual">
+              <div class="detalle-grid">
+                <div class="detalle-item">
+                  <span class="detalle-label">ID entrega</span>
+                  <span class="detalle-valor"
+                    >#{{ detalleActual.id_entrega }}</span
+                  >
+                </div>
+                <div class="detalle-item">
+                  <span class="detalle-label">Código</span>
+                  <span class="detalle-valor">{{
+                    detalleActual.codigo || "—"
+                  }}</span>
+                </div>
+                <div class="detalle-item">
+                  <span class="detalle-label">Familia</span>
+                  <span class="detalle-valor">{{
+                    detalleActual.id_familia
+                      ? "#" + detalleActual.id_familia
+                      : "—"
+                  }}</span>
+                </div>
+                <div class="detalle-item">
+                  <span class="detalle-label">Bodega</span>
+                  <span class="detalle-valor">{{
+                    detalleActual.id_bodega
+                      ? "#" + detalleActual.id_bodega
+                      : "—"
+                  }}</span>
+                </div>
+                <div class="detalle-item">
+                  <span class="detalle-label">Fecha efectiva</span>
+                  <span class="detalle-valor">{{
+                    formatFecha(detalleActual.fecha_efectiva)
+                  }}</span>
+                </div>
+                <div class="detalle-item">
+                  <span class="detalle-label">Estado</span>
+                  <span :class="['badge', badgeEstado(detalleActual.estado)]">{{
+                    labelEstado(detalleActual.estado)
+                  }}</span>
+                </div>
+                <div v-if="detalleActual.coordenadas" class="detalle-item full">
+                  <span class="detalle-label">Coordenadas</span>
+                  <span class="detalle-valor">{{
+                    detalleActual.coordenadas
+                  }}</span>
+                </div>
+              </div>
+
+              <!-- Recursos entregados -->
+              <div
+                v-if="detalleActual.detalles?.length"
+                class="detalle-recursos"
+              >
+                <h5>Recursos entregados</h5>
+                <ul class="recursos-list">
+                  <li
+                    v-for="d in detalleActual.detalles"
+                    :key="d.id_detalle"
+                    class="recurso-item"
+                  >
+                    <span class="recurso-nombre">{{
+                      d.nombre_recurso || "Recurso #" + d.id_recurso
+                    }}</span>
+                    <span class="badge badge-default"
+                      >{{ d.cantidad }} unid.</span
+                    >
+                  </li>
+                </ul>
+              </div>
+              <div v-else class="detalle-empty">
+                Sin recursos registrados en esta entrega.
+              </div>
+            </template>
+          </div>
+        </li>
+      </ul>
+
+      <!-- Vacío -->
+      <div v-else class="empty-list">
+        <div class="icon">
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12h14" />
+            <path d="M12 5l7 7-7 7" />
+          </svg>
+        </div>
+        <h4>Sin entregas registradas</h4>
+        <p>No hay entregas que coincidan con los filtros aplicados.</p>
+      </div>
+
+      <!-- Paginación -->
+      <Pagination
+        v-if="!isLoading && total > pageSize"
+        :total="total"
+        :page-size="pageSize"
+        :current-page="currentPage"
+        @page-change="onPageChange"
+      />
     </section>
   </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, onMounted, reactive, ref } from 'vue'
-import { entregaService } from '../../services/operaciones'
-import { familiaService } from '../../services/familia'
-import { bodegaService, recursoService } from '../../services/ubicaciones'
-import { usePermissions } from '../../composables/usePermissions'
-import SignaturePad from '../../components/SignaturePad.vue'
-import LoadingState from '../../components/LoadingState.vue'
-import ErrorState from '../../components/ErrorState.vue'
-import type { Bodega, Entrega, EntregaCreate, EstadoEntrega, Familia, Recurso } from '../../types'
-
-interface DetalleFormLine {
-  id_recurso: number | null
-  cantidad: number | null
-}
+import { defineComponent, ref, onMounted } from "vue";
+import Pagination from "../../components/Pagination.vue";
+import { entregaService } from "../../services/operaciones";
+import type { Entrega } from "../../types";
 
 export default defineComponent({
-  name: 'DashboardEntregas',
-  components: { SignaturePad, LoadingState, ErrorState },
+  name: "DashboardEntregas",
+  components: { Pagination },
   setup() {
-    const { puedeAccion } = usePermissions()
+    const entregas = ref<Entrega[]>([]);
+    const total = ref(0);
+    const currentPage = ref(1);
+    const pageSize = ref(10);
 
-    const familias = ref<Familia[]>([])
-    const bodegas = ref<Bodega[]>([])
-    const recursos = ref<Recurso[]>([])
-    const isLoadingPickers = ref(false)
-    const isSubmitting = ref(false)
-    const isLocating = ref(false)
-    const geoError = ref('')
-    const showPanel = ref(false)
-    const resultKind = ref<'success' | 'error'>('success')
-    const errorMessage = ref('')
-    const entregaCreada = ref<Entrega | null>(null)
-    const fieldErrors = reactive<Record<string, string>>({})
+    const isLoading = ref(false);
+    const errorMessage = ref("");
 
-    const today = (): string => new Date().toISOString().split('T')[0]
+    const filtroEstado = ref("");
+    const filtroFamilia = ref<number | null>(null);
 
-    const emptyDetalle = (): DetalleFormLine => ({ id_recurso: null, cantidad: null })
+    const expandida = ref<number | null>(null);
+    const detalleActual = ref<Entrega | null>(null);
+    const cargandoDetalle = ref(false);
 
-    const form = reactive({
-      id_familia: null as number | null,
-      id_bodega: null as number | null,
-      fecha_efectiva: today(),
-      coordenadas: '',
-      firma_digital: '',
-      detalles: [emptyDetalle()] as DetalleFormLine[]
-    })
+    const extractError = (err: any): string => {
+      const detail = err?.response?.data?.detail;
+      if (typeof detail === "string") return detail;
+      if (Array.isArray(detail))
+        return detail.map((d: any) => d.msg).join(", ");
+      return err?.message || "Error desconocido";
+    };
 
-    const recursosActivos = computed(() => recursos.value.filter(r => r.activo))
-
-    const extractError = (err: unknown): string => {
-      const e = err as { response?: { data?: { detail?: string | Array<{ msg: string }> } }; message?: string }
-      const detail = e?.response?.data?.detail
-      if (typeof detail === 'string') return detail
-      if (Array.isArray(detail)) return detail.map(d => d.msg).join(', ')
-      return e?.message || 'Error desconocido'
-    }
-
-    const loadPickers = async (): Promise<void> => {
-      if (!puedeAccion('entregas.registrar')) return
-      isLoadingPickers.value = true
+    const cargarEntregas = async () => {
+      isLoading.value = true;
+      errorMessage.value = "";
+      expandida.value = null;
       try {
-        const [famRes, bodRes, recRes] = await Promise.all([
-          familiaService.list(),
-          bodegaService.list(),
-          recursoService.list()
-        ])
-        familias.value = Array.isArray(famRes) ? famRes : []
-        bodegas.value = Array.isArray(bodRes) ? bodRes : []
-        recursos.value = Array.isArray(recRes) ? recRes : []
+        const result = await entregaService.listar({
+          estado: filtroEstado.value || undefined,
+          id_familia: filtroFamilia.value ?? undefined,
+          skip: (currentPage.value - 1) * pageSize.value,
+          limit: pageSize.value,
+        });
+        entregas.value = Array.isArray(result)
+          ? result
+          : ((result as any).items ?? []);
+        total.value = Array.isArray(result)
+          ? result.length
+          : ((result as any).total ?? entregas.value.length);
+      } catch (err: any) {
+        errorMessage.value = extractError(err);
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    const toggleDetalle = async (id: number) => {
+      if (expandida.value === id) {
+        expandida.value = null;
+        detalleActual.value = null;
+        return;
+      }
+      expandida.value = id;
+      detalleActual.value = null;
+      cargandoDetalle.value = true;
+      try {
+        detalleActual.value = await entregaService.get(id);
       } catch {
-        // Los pickers quedan vacíos; el usuario verá selects sin opciones
+        detalleActual.value =
+          entregas.value.find((e) => e.id_entrega === id) ?? null;
       } finally {
-        isLoadingPickers.value = false
+        cargandoDetalle.value = false;
       }
-    }
+    };
 
-    const validate = (): boolean => {
-      Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
+    const onPageChange = (page: number) => {
+      currentPage.value = page;
+      cargarEntregas();
+    };
 
-      if (!form.id_familia) fieldErrors.id_familia = 'Selecciona la familia beneficiaria'
+    onMounted(cargarEntregas);
 
-      const validDetalles = form.detalles.filter(
-        d => d.id_recurso && d.cantidad && d.cantidad > 0
-      )
-      if (!validDetalles.length) {
-        fieldErrors.detalles = 'Agrega al menos un recurso con cantidad mayor a cero'
-      }
+    // Helpers UI
+    const labelEstado = (e: string) =>
+      ({
+        PENDIENTE: "Pendiente",
+        ENTREGADA: "Entregada",
+        ANULADA: "Anulada",
+      })[e] ?? e;
 
-      const recursoIds = new Set<number>()
-      form.detalles.forEach((linea, index) => {
-        if (!linea.id_recurso && !linea.cantidad) return
-        if (!linea.id_recurso || !linea.cantidad || linea.cantidad <= 0) {
-          fieldErrors[`detalle_${index}`] = 'Completa recurso y cantidad'
-        } else if (recursoIds.has(linea.id_recurso)) {
-          fieldErrors[`detalle_${index}`] = 'Recurso duplicado'
-          fieldErrors.detalles = 'No repitas el mismo recurso en la entrega'
-        } else {
-          recursoIds.add(linea.id_recurso)
-        }
-      })
+    const badgeEstado = (e: string) =>
+      ({
+        PENDIENTE: "badge-warning",
+        ENTREGADA: "badge-success",
+        ANULADA: "badge-danger",
+      })[e] ?? "badge-default";
 
-      return Object.keys(fieldErrors).length === 0
-    }
+    const avatarEstado = (e: string) =>
+      ({
+        PENDIENTE: "variant-yellow",
+        ENTREGADA: "variant-green",
+        ANULADA: "variant-red",
+      })[e] ?? "";
 
-    const addDetalle = (): void => {
-      form.detalles.push(emptyDetalle())
-    }
-
-    const removeDetalle = (index: number): void => {
-      if (form.detalles.length <= 1) return
-      form.detalles.splice(index, 1)
-    }
-
-    const obtenerUbicacion = (): void => {
-      geoError.value = ''
-      if (!navigator.geolocation) {
-        geoError.value = 'Tu navegador no soporta geolocalización'
-        return
-      }
-      isLocating.value = true
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          form.coordenadas = `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`
-          isLocating.value = false
-        },
-        (err) => {
-          geoError.value = err.message || 'No se pudo obtener la ubicación'
-          isLocating.value = false
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-      )
-    }
-
-    const buildPayload = (): EntregaCreate => {
-      const payload: EntregaCreate = {
-        id_familia: form.id_familia as number,
-        detalles: form.detalles
-          .filter(d => d.id_recurso && d.cantidad && d.cantidad > 0)
-          .map(d => ({ id_recurso: d.id_recurso as number, cantidad: d.cantidad as number }))
-      }
-      if (form.id_bodega) payload.id_bodega = form.id_bodega
-      if (form.fecha_efectiva) payload.fecha_efectiva = form.fecha_efectiva
-      if (form.coordenadas.trim()) payload.coordenadas = form.coordenadas.trim()
-      if (form.firma_digital) payload.firma_digital = form.firma_digital
-      return payload
-    }
-
-    const resetForm = (): void => {
-      form.id_familia = null
-      form.id_bodega = null
-      form.fecha_efectiva = today()
-      form.coordenadas = ''
-      form.firma_digital = ''
-      form.detalles = [emptyDetalle()]
-      geoError.value = ''
-      Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
-    }
-
-    const closeResult = (): void => {
-      showPanel.value = false
-      entregaCreada.value = null
-      errorMessage.value = ''
-    }
-
-    const submitEntrega = async (): Promise<void> => {
-      if (!validate()) return
-      isSubmitting.value = true
-      showPanel.value = true
-      resultKind.value = 'success'
-      entregaCreada.value = null
-      errorMessage.value = ''
-      try {
-        entregaCreada.value = await entregaService.registrar(buildPayload())
-        resultKind.value = 'success'
-        resetForm()
-      } catch (err: unknown) {
-        resultKind.value = 'error'
-        errorMessage.value = extractError(err)
-      } finally {
-        isSubmitting.value = false
-      }
-    }
-
-    const estadoBadge = (estado: EstadoEntrega): string => {
-      const map: Record<EstadoEntrega, string> = {
-        PENDIENTE: 'badge-warning',
-        ENTREGADA: 'badge-success',
-        ANULADA: 'badge-danger'
-      }
-      return map[estado] || 'badge-default'
-    }
-
-    onMounted(() => {
-      loadPickers()
-    })
+    const formatFecha = (f: string) =>
+      new Date(f).toLocaleDateString("es-CO", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
 
     return {
-      puedeAccion,
-      familias,
-      bodegas,
-      recursosActivos,
-      form,
-      fieldErrors,
-      isLoadingPickers,
-      isSubmitting,
-      isLocating,
-      geoError,
-      showPanel,
-      resultKind,
+      entregas,
+      total,
+      currentPage,
+      pageSize,
+      isLoading,
       errorMessage,
-      entregaCreada,
-      addDetalle,
-      removeDetalle,
-      obtenerUbicacion,
-      resetForm,
-      closeResult,
-      submitEntrega,
-      estadoBadge
-    }
-  }
-})
+      filtroEstado,
+      filtroFamilia,
+      expandida,
+      detalleActual,
+      cargandoDetalle,
+      cargarEntregas,
+      toggleDetalle,
+      onPageChange,
+      labelEstado,
+      badgeEstado,
+      avatarEstado,
+      formatFecha,
+    };
+  },
+});
 </script>
 
 <style scoped>
-.coords-row {
+.filtros-row {
   display: flex;
-  gap: var(--spacing-sm, 0.5rem);
   flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 4px;
 }
 
-.coords-row .input {
-  flex: 1;
+.filtro-select,
+.filtro-input {
+  width: auto;
   min-width: 180px;
+  flex: 1;
 }
 
-.detalles-list {
+/* Tarjeta entrega */
+.entrega-card {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.entrega-card--expanded {
+  border-color: #d0e0ff;
+  background: #fafbff;
+}
+
+/* Botón expandir */
+.btn-expandir {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #eaecf0;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.2s;
+  color: #667085;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-expandir svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.btn-expandir--active svg {
+  transform: rotate(180deg);
+}
+
+.btn-expandir:hover {
+  background: #eef4ff;
+  border-color: #b2c8ff;
+  color: #1d4ed8;
+}
+
+/* Detalle expandible */
+.entrega-detalle {
+  width: 100%;
+  border-top: 1px solid #eaecf0;
+  padding-top: 16px;
+  margin-top: 8px;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.detalle-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #667085;
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.spinner-sm {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e0e6f0;
+  border-top-color: #3b7cff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.detalle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.detalle-item {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm, 0.5rem);
+  gap: 2px;
 }
 
-.detalle-row {
-  display: grid;
-  grid-template-columns: 1fr 110px auto;
-  gap: var(--spacing-sm, 0.5rem);
-  align-items: center;
+.detalle-item.full {
+  grid-column: 1 / -1;
 }
 
-.detalle-row.error .select,
-.detalle-row.error .input {
-  border-color: var(--color-danger, #f04438);
+.detalle-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #98a2b3;
 }
 
-.detalle-cantidad {
-  min-width: 0;
+.detalle-valor {
+  font-size: 13.5px;
+  color: #344054;
+  font-weight: 500;
 }
 
-.btn-add-line {
-  margin-top: var(--spacing-sm, 0.5rem);
+/* Recursos */
+.detalle-recursos h5 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #667085;
+  margin: 0 0 10px;
 }
 
-.detalle-result-list {
+.recursos-list {
+  list-style: none;
   margin: 0;
-  padding-left: 1.1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-@media (max-width: 640px) {
-  .detalle-row {
-    grid-template-columns: 1fr;
-  }
+.recurso-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #eaecf0;
+}
 
-  .coords-row {
-    flex-direction: column;
-  }
+.recurso-nombre {
+  font-size: 13.5px;
+  color: #344054;
+  font-weight: 500;
+}
+
+.detalle-empty {
+  font-size: 13px;
+  color: #98a2b3;
+  padding: 8px 0;
 }
 </style>

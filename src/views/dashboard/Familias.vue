@@ -61,7 +61,7 @@
           <div class="result-head-info">
             <span class="label">Listado de familias</span>
             <span v-if="resultKind === 'success' && Array.isArray(familias)" class="count">
-              <strong>{{ familias.length }}</strong> {{ familias.length === 1 ? 'familia' : 'familias' }}
+              <strong>{{ totalItems }}</strong> {{ totalItems === 1 ? 'familia' : 'familias' }}
             </span>
           </div>
           <button class="btn btn-ghost" @click="closeResult">Cerrar</button>
@@ -103,12 +103,44 @@
                 </div>
               </div>
               <div class="item-actions">
-                <span class="badge badge-default">ID {{ familia.id_familia }}</span>
-              </div>
+  <button class="btn btn-secondary" type="button" @click="toggleDetalleFamilia(familia.id_familia)">
+    {{ familiaExpandida === familia.id_familia ? 'Ocultar detalle' : 'Ver detalle' }}
+  </button>
+
+  <button
+    class="btn btn-primary"
+    type="button"
+    :disabled="calculandoPuntaje === familia.id_familia"
+    @click="calcularPuntajeFamilia(familia.id_familia)"
+  >
+    {{ calculandoPuntaje === familia.id_familia ? 'Calculando...' : 'Calcular puntaje' }}
+  </button>
+
+  <span class="badge badge-default">ID {{ familia.id_familia }}</span>
+</div>
+
+<div v-if="familiaExpandida === familia.id_familia" class="family-detail-card">
+  <div class="detail-row">
+    <span class="k">Código</span>
+    <span class="v">{{ familia.codigo_familia || 'Sin código' }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="k">Fecha de registro</span>
+    <span class="v">{{ formatDate(familia.fecha_registro) }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="k">Zona</span>
+    <span class="v">{{ familia.id_zona ? 'Zona #' + familia.id_zona : 'Sin zona asignada' }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="k">Puntaje prioridad</span>
+    <span class="v">{{ familia.puntaje_prioridad ?? 'Pendiente por calcular' }}</span>
+  </div>
+</div>
             </li>
           </ul>
 
-          <div v-else-if="Array.isArray(familias) && familias.length === 0" class="empty-list">
+          <div v-if="Array.isArray(familias) && familias.length === 0" class="empty-list">
             <div class="icon">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             </div>
@@ -116,12 +148,22 @@
             <p>Aún no se han creado familias en la plataforma.</p>
           </div>
 
-          <div v-else class="detail-card">
+          <div v-if="resultKind === 'success' && !Array.isArray(familias)" class="detail-card">
             <div class="detail-row">
               <span class="k">Detalle</span>
               <span class="v">Familia creada correctamente.</span>
             </div>
           </div>
+
+          <Pagination
+            v-if="Array.isArray(familias) && familias.length > 0"
+            v-model:currentPage="currentPage"
+            v-model:pageSize="pageSize"
+            :total="totalItems"
+            :loading="isListLoading"
+            item-label="familia"
+            @change="onPageChange"
+          />
         </div>
 
         <div v-else class="toast error">
@@ -143,10 +185,12 @@ import { defineComponent, reactive, ref, onMounted, computed } from 'vue'
 import { familiaService } from '../../services/familia'
 import { zonaService } from '../../services/ubicaciones'
 import { usePermissions } from '../../composables/usePermissions'
-import type { Familia, Zona } from '../../types'
+import Pagination from '../../components/Pagination.vue'
+import type { Familia, Zona, PaginatedResponse } from '../../types'
 
 export default defineComponent({
   name: 'DashboardFamilias',
+  components: { Pagination },
   setup() {
     const { puedeAccion } = usePermissions()
     const form = reactive({ acepta_privacidad: true, id_zona: null as number | null })
@@ -161,7 +205,7 @@ export default defineComponent({
     const isListLoading = ref(false)
     const errorMessage = ref('')
     const familiasFiltradas = computed(() => {
-    const q = searchFamilia.value.toLowerCase().trim()
+      const q = searchFamilia.value.toLowerCase().trim()
 
       if (!q) return familias.value
 
@@ -172,6 +216,38 @@ export default defineComponent({
       )
     })
 
+    const familiaExpandida = ref<number | null>(null)
+    const calculandoPuntaje = ref<number | null>(null)
+
+    const currentPage = ref(1)
+    const pageSize = ref(6)
+    const totalItems = ref(0)
+
+    const loadFamilies = async (page: number = currentPage.value, size: number = pageSize.value) => {
+      isListLoading.value = true
+      mode.value = 'list'
+      showPanel.value = true
+      try {
+        const response: PaginatedResponse<Familia> = await familiaService.list(page, size)
+        resultKind.value = 'success'
+        familias.value = response.items
+        totalItems.value = response.total
+        currentPage.value = response.page
+        pageSize.value = response.page_size
+      } catch (err: any) {
+        resultKind.value = 'error'
+        errorMessage.value = extractError(err)
+        familias.value = []
+      } finally {
+        isListLoading.value = false
+        mode.value = null
+      }
+    }
+
+    const onPageChange = (payload: { page: number; pageSize: number }) => {
+      loadFamilies(payload.page, payload.pageSize)
+    }
+
     onMounted(async () => {
       try {
         zonas.value = await zonaService.list()
@@ -179,21 +255,37 @@ export default defineComponent({
         // silent
       }
       if (puedeAccion('familias.listar')) {
-        isListLoading.value = true
-        try {
-          const response = await familiaService.list()
-          familias.value = Array.isArray(response) ? response : []
-          resultKind.value = 'success'
-          showPanel.value = true
-        } catch (err: any) {
-          resultKind.value = 'error'
-          errorMessage.value = extractError(err)
-          showPanel.value = true
-        } finally {
-          isListLoading.value = false
-        }
+        await loadFamilies()
       }
     })
+
+
+const toggleDetalleFamilia = (familiaId: number) => {
+  familiaExpandida.value = familiaExpandida.value === familiaId ? null : familiaId
+}
+
+const calcularPuntajeFamilia = async (familiaId: number) => {
+  calculandoPuntaje.value = familiaId
+  try {
+    const response = await familiaService.calcularPuntaje(familiaId)
+
+    familias.value = familias.value.map(familia =>
+      familia.id_familia === familiaId
+        ? {
+            ...familia,
+            puntaje_prioridad: response.puntaje_prioridad ?? response.puntaje ?? familia.puntaje_prioridad
+          }
+        : familia
+    )
+  } catch (err: any) {
+    resultKind.value = 'error'
+    errorMessage.value = extractError(err)
+    showPanel.value = true
+  } finally {
+    calculandoPuntaje.value = null
+  }
+}
+
 
     const validate = (): boolean => {
       Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
@@ -235,36 +327,16 @@ export default defineComponent({
       isLoading.value = true
       mode.value = 'create'
       try {
-        const response: Familia = await familiaService.create({
+        await familiaService.create({
           acepta_privacidad: form.acepta_privacidad,
           id_zona: form.id_zona ?? undefined
         })
         resultKind.value = 'success'
-        familias.value = [response]
-        showPanel.value = true
         resetForm()
+        await loadFamilies(1, pageSize.value)
       } catch (err: any) {
         resultKind.value = 'error'
         errorMessage.value = extractError(err)
-        showPanel.value = true
-      } finally {
-        isLoading.value = false
-        mode.value = null
-      }
-    }
-
-    const loadFamilies = async () => {
-      isLoading.value = true
-      mode.value = 'list'
-      try {
-        const response: Familia[] = await familiaService.list()
-        resultKind.value = 'success'
-        familias.value = Array.isArray(response) ? response : []
-        showPanel.value = true
-      } catch (err: any) {
-        resultKind.value = 'error'
-        errorMessage.value = extractError(err)
-        familias.value = []
         showPanel.value = true
       } finally {
         isLoading.value = false
@@ -273,25 +345,81 @@ export default defineComponent({
     }
 
     return {
-        form,
-        fieldErrors,
-        isLoading,
-        mode,
-        showPanel,
-        resultKind,
-        familias,
-        familiasFiltradas,
-        searchFamilia,
-        zonas,
-        isListLoading,
-        errorMessage,
-        createFamily,
-        loadFamilies,
-        resetForm,
-        closeResult,
-        formatDate,
-        puedeAccion
-      }
+      form, fieldErrors, isLoading, mode, showPanel, resultKind,
+      familias, familiasFiltradas, searchFamilia, zonas, isListLoading, errorMessage,
+      currentPage, pageSize, totalItems,
+      createFamily, loadFamilies, onPageChange, resetForm, closeResult,
+      formatDate, puedeAccion, familiaExpandida, calculandoPuntaje, toggleDetalleFamilia, calcularPuntajeFamilia,
+    }
   }
 })
 </script>
+<style scoped>
+.item-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  min-width: 150px;
+}
+
+.item-actions .btn {
+  justify-content: center;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.family-detail-card {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid #dbe7ff;
+  border-radius: 14px;
+  background: #f8fbff;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.family-detail-card .detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.family-detail-card .k {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.family-detail-card .v {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+@media (max-width: 760px) {
+  .item-card {
+    grid-template-columns: auto 1fr;
+  }
+
+  .item-actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .item-actions .btn {
+    width: auto;
+  }
+}
+</style>
